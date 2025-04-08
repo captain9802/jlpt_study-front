@@ -13,6 +13,12 @@ dist
 dist-ssr
 coverage
 *.local
+.env.*
+.vite
+.eslintcache
+Thumbs.db
+ehthumbs.db
+*.stackdump
 
 /cypress/videos/
 /cypress/screenshots/

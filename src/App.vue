@@ -1,47 +1,25 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-    </div>
-  </header>
-
-  <main>
-    <TheWelcome />
-  </main>
+  <div id="app">
+    <Header v-if="showHeader" />
+    <router-view />
+  </div>
 </template>
 
-<style scoped>
-header {
-  line-height: 1.5;
-}
+<script setup>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import Header from './components/Header.vue';
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
+const route = useRoute();
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
+const noHeaderRoutes = ['Login'];
+const showHeader = computed(() => !noHeaderRoutes.includes(route.name));
+</script>
 
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+<style>
+body {
+  margin: 0;
+  font-family: 'Noto Sans JP', sans-serif;
+  color: #3e3e3e;
 }
 </style>
