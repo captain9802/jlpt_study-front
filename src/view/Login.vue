@@ -85,10 +85,10 @@ onMounted(() => {
 <style scoped>
 .home-container {
   background-color: #5869FF;
-  max-width: 500px;
+  max-width: 1024px;
   width: 100%;
   margin: 0 auto;
-  height: 100vh;
+  height: 100dvh;
   padding: 40px 20px;
   box-sizing: border-box;
 

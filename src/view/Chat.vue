@@ -12,36 +12,96 @@
             >
               <img :src="msg.avatar" class="avatar" />
               <div class="bubble">
-                <p>{{ msg.text }}</p>
+                <p v-html="highlightFavorites(msg.text, msg)"></p>
                 <button
                     v-if="msg.from === 'ai'"
                     class="plus-btn"
                     @click="toggleTooltip(index)"
-                >+</button>
-                <div v-if="msg.showTooltip" class="tooltip">
+                >
+                  <Icon icon="mdi:plus" width="16" height="16" />
+                </button>
+                <div v-if="msg.showTooltip" class="tooltip"
+                     :style="{ width: msg.showInfo || msg.showTranslation ? '100%' : 'auto',
+                     minWidth: msg.showInfo || msg.showTranslation ? '250px' : 'auto' }"
+                >
                   <div class="tooltip-buttons">
-                    <button @click="toggleInfo(index)">
-                      <i :class="['icon', msg.showInfo ? 'active' : '']">ℹ️</i>
-                    </button>
-                    <button @click="toggleFavorite(index)">
-                      <i :class="['icon', msg.favorite ? 'active' : '']">★</i>
-                    </button>
-                    <button><i class="icon">🔊</i></button>
-                    <button><i class="icon">🌐</i></button>
-                    <button @click="closeTooltip(index)">
-                      <i class="icon">❌</i>
-                    </button>
+                      <Icon
+                          icon="mdi:information-outline"
+                          class="icon"
+                          :color="msg.showInfo ? '#42a5f5' : '#ccc'"
+                          width="24"
+                          height="24"
+                          @click="toggleInfo(index)"
+                      />
+                      <Icon
+                          :icon="msg.favorite ? 'mdi:star' : 'mdi:star-outline'"
+                          class="icon"
+                          :color="msg.favorite ? '#FFD700' : '#ccc'"
+                          width="24"
+                          height="24"
+                          @click="toggleFavorite(index)"
+                      />
+                      <Icon icon="mdi:volume-high" class="icon" color="#ccc" width="24" height="24" />
+                      <Icon
+                          icon="mdi:translate"
+                          class="icon"
+                          width="24" height="24"
+                          @click="toggleTranslation(index)"
+                          :color="msg.showTranslation ? '#42a5f5' : '#ccc'"
+                      />
+                      <Icon icon="mdi:close" class="icon" color="#ccc" width="24" height="24" @click="closeTooltip(index)"/>
                   </div>
+
                   <div v-if="msg.showInfo" class="tooltip-info">
-                    <p><strong>단어 정보:</strong></p>
+                    <p><strong>문장 해석:</strong> {{ msg.explanation.translation }}</p>
+                    <p><strong>문법 표현:</strong></p>
                     <ul>
-                      <li v-for="(word, i) in msg.words" :key="i">
-                        {{ word }}
-                        <button @click="toggleWordFavorite(index, word)">
-                          <span :style="{ color: msg.wordFavorites?.[word] ? '#FFD700' : '#ccc' }">★</span>
-                        </button>
+                      <li v-for="(g, gi) in msg.explanation.grammar" :key="gi">
+                        <div class="tooltip-title">
+                        {{ g.text }}: {{ g.meaning }}
+                          <button @click="toggleGrammarFavorite(index, g.text)" class="fav-button">
+                            <Icon
+                                :icon="msg.grammarFavorites?.[g.text] ? 'mdi:star' : 'mdi:star-outline'"
+                                :color="msg.grammarFavorites?.[g.text] ? '#FFD700' : '#ccc'"
+                                width="18"
+                                height="18"
+                            />
+                          </button>
+                        </div>
                       </li>
                     </ul>
+                    <p><strong>주요 단어 해설:</strong></p>
+                    <ul>
+                      <li v-for="(word, i) in msg.words" :key="i">
+                        <div class="tooltip-title">
+                        {{ word.text }}（{{ word.reading }}）: {{ word.meaning }}
+                          <button @click="toggleWordFavorite(index, word.text)" class="fav-button">
+                            <Icon :icon="msg.wordFavorites?.[word.text] ? 'mdi:star' : 'mdi:star-outline'" :color="msg.wordFavorites?.[word.text] ? '#FFD700' : '#ccc'" width="18" height="18" />
+                          </button>
+                        </div>
+                        <button class="detail-btn" @click="toggleWordDetail(index, i)">[자세히 보기]</button>
+
+                        <div v-if="word.showDetail" class="word-detail">
+                          <table>
+                            <thead>
+                            <tr><th>항목</th><th>내용</th></tr>
+                            <tr><td>뜻</td><td>{{ word.meaning }}</td></tr>
+                            <tr><td>음독</td><td>{{ word.onyomi }}</td></tr>
+                            <tr><td>훈독</td><td>{{ word.kunyomi }}</td></tr>
+                            </thead>
+                          </table>
+                          <div class="examples" v-if="word.examples?.length">
+                            <strong>예시</strong>
+                            <ul>
+                              <li v-for="(ex, j) in word.examples" :key="j">{{ ex }}</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                  <div v-if="msg.showTranslation" class="tooltip-info">
+                    <p><strong>문장 해석:</strong> {{ msg.explanation.translation }}</p>
                   </div>
                 </div>
               </div>
@@ -55,20 +115,7 @@
                 @keydown.enter.exact.prevent="sendMessage"
             />
             <button class="send-button" @click="sendMessage">
-              <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke-width="2"
-                  stroke="white"
-                  class="arrow-icon"
-              >
-                <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M5 10l7-7m0 0l7 7m-7-7v18"
-                />
-              </svg>
+              <Icon icon="mdi:send" class="arrow-icon" color="white" width="24" height="24" />
             </button>
           </div>
         </div>
@@ -78,6 +125,7 @@
 </template>
 
 <script setup>
+import { Icon } from '@iconify/vue'
 import { ref, nextTick } from 'vue'
 import Aiset from '@/components/ai/Aiset.vue'
 
@@ -87,6 +135,16 @@ const message = ref('')
 const placeholder = '여기에 메세지를 입력해주세요.\n(ここにメッセージを入力してください.)'
 
 const messages = ref([])
+
+function highlightFavorites(text, msg) {
+  const favorites = new Set([
+    ...Object.keys(msg.wordFavorites || {}).filter(word => msg.wordFavorites[word]),
+    ...Object.keys(msg.grammarFavorites || {}).filter(g => msg.grammarFavorites[g])
+  ])
+
+  const pattern = new RegExp(`(${[...favorites].join('|')})`, 'g')
+  return text.replace(pattern, '<span class="highlight">$1</span>')
+}
 
 function handleSettingComplete() {
   showSetting.value = false
@@ -110,7 +168,48 @@ function handleSettingComplete() {
     })
     scrollToBottom()
   }, 600)
+  setTimeout(() => {
+    messages.value.push({
+      from: 'ai',
+      text: '明日は友',
+      avatar: '/악어.png',
+      showTooltip: false,
+      showInfo: false,
+      showTranslation: false,
+      favorite: false,
+      wordFavorites: {},
+      grammarFavorites: {},
+      explanation: {
+        translation: '내일은 친구와 영화를 보러 갈 예정입니다.',
+        grammar: [
+          { text: '〜に行く', meaning: '~하러 가다' },
+          { text: '予定です', meaning: '~할 예정이다' }
+        ]
+      },
+      words: [
+        {
+          text: '予定',
+          reading: 'よてい',
+          meaning: '예정',
+          onyomi: 'よてい',
+          kunyomi: 'なし',
+          examples: ['予定通り – 예정대로', '予定日 – 예정일'],
+          showDetail: false
+        },
+        {
+          text: '明日',
+          reading: 'あした',
+          meaning: '내일',
+          onyomi: 'めいにち',
+          kunyomi: 'あした / あす',
+          examples: ['明日会いましょう – 내일 만나자'],
+          showDetail: false
+        }
+      ]
+    })
+  }, 900)
 }
+
 
 function sendMessage() {
   if (message.value.trim()) {
@@ -128,27 +227,36 @@ function closeTooltip(index) {
   messages.value[index].showTooltip = false
 }
 
-function toggleFavorite(index) {
-  messages.value[index].favorite = !messages.value[index].favorite
+function toggleTooltip(index) {
+  messages.value[index].showTooltip = !messages.value[index].showTooltip
 }
 
 function toggleInfo(index) {
   messages.value[index].showInfo = !messages.value[index].showInfo
+  messages.value[index].showTranslation = false
+}
 
-  if (!messages.value[index].words) {
-    const words = messages.value[index].text.split(' ')
-    messages.value[index].words = words
-    messages.value[index].wordFavorites = {}
-  }
+function toggleFavorite(index) {
+  messages.value[index].favorite = !messages.value[index].favorite
+}
+
+function toggleGrammarFavorite(index, grammarText) {
+  const fav = messages.value[index].grammarFavorites
+  fav[grammarText] = !fav[grammarText]
 }
 
 function toggleWordFavorite(index, word) {
-  const wordFavorites = messages.value[index].wordFavorites
-  wordFavorites[word] = !wordFavorites[word]
+  const fav = messages.value[index].wordFavorites
+  fav[word] = !fav[word]
 }
 
-function toggleTooltip(index) {
-  messages.value[index].showTooltip = !messages.value[index].showTooltip
+function toggleWordDetail(msgIndex, wordIndex) {
+  messages.value[msgIndex].words[wordIndex].showDetail = !messages.value[msgIndex].words[wordIndex].showDetail
+}
+
+function toggleTranslation(index) {
+  messages.value[index].showTranslation = !messages.value[index].showTranslation
+  messages.value[index].showInfo = false
 }
 
 function scrollToBottom() {
@@ -168,9 +276,9 @@ function scrollToBottom() {
   justify-content: center;
   box-sizing: border-box;
   background-color: #5869FF;
-  max-width: 500px;
+  max-width: 1024px;
   margin: 0 auto;
-  height: calc(100vh - 70px);
+  height: calc(100dvh - 66px);
   border-left: 10px solid #5869FF;
   border-right: 10px solid #5869FF;
   border-bottom: 10px solid #5869FF;
@@ -180,7 +288,7 @@ function scrollToBottom() {
 
 .chat-container {
   width: 100%;
-  max-width: 500px;
+  max-width: 1024px;
   background-color: white;
   padding: 16px;
   box-sizing: border-box;
@@ -216,7 +324,7 @@ function scrollToBottom() {
 }
 
 .chat-input-box {
-  max-width: 460px;
+  max-width: 1024px;
   height: 105px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.10);
@@ -261,6 +369,10 @@ function scrollToBottom() {
   flex-shrink: 0;
 }
 
+::v-deep(.highlight) {
+  color: #3b82f6;
+}
+
 .arrow-icon {
   width: 20px;
   height: 20px;
@@ -291,8 +403,9 @@ function scrollToBottom() {
   background-color: #e0f0ff;
   padding: 0 1rem;
   border-radius: 12px;
-  max-width: 80%;
+  max-width: 75%;
   position: relative;
+  font-size: clamp(14px, 1.5vw, 16px);
 }
 
 .avatar {
@@ -312,6 +425,10 @@ function scrollToBottom() {
   border-radius: 50%;
   border: none;
   cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tooltip {
@@ -321,19 +438,19 @@ function scrollToBottom() {
   background: #fff;
   color: #333;
   border: 1px solid #ccc;
-  padding: 6px 12px;
-  font-size: 0.85rem;
+  padding: 6px;
+  font-size: 14px;
   margin-top: 4px;
   border-radius: 8px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   z-index: 100;
+  max-width: 1040px;
 }
 
 .tooltip-buttons {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
 }
 
 .tooltip-info {
@@ -342,10 +459,11 @@ function scrollToBottom() {
   padding: 8px;
   font-size: 0.85rem;
   color: #333;
+  min-width: 220px;
 }
 
 .icon {
-  font-size: 1.1rem;
+  font-size: clamp(14px, 1.5vw, 16px);
   cursor: pointer;
   background: none;
   border: none;
@@ -357,11 +475,55 @@ function scrollToBottom() {
   color: #5869FF;
 }
 
+.fav-button {
+  display: flex;
+}
+
 .tooltip-info button {
   background: none;
   border: none;
-  font-size: 1rem;
+  font-size: 14px;
+  opacity: 50%;
   cursor: pointer;
+  color: #3e3e3e;
+}
+
+.tooltip-info ul {
+  padding-left: 20px;
+}
+
+.tooltip-title {
+  display: flex;
+  align-items: center;
+}
+
+.word-detail {
+  margin-top: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.5rem;
+  background-color: #f9f9f9;
+  width: 100%; /* 가득 사용 */
+  box-sizing: border-box;
+}
+
+.word-detail table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.word-detail th,
+.word-detail td {
+  border: 1px solid #ddd;
+  padding: 6px;
+  text-align: left;
+  word-break: keep-all;
+}
+
+.word-detail .examples {
+  margin-top: 0.5rem;
+  padding-left: 0.5rem;
 }
 
 .chat-enter-from {
