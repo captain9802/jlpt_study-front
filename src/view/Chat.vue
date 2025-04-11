@@ -1,5 +1,5 @@
 <template>
-  <div class="chat-wrapper">
+  <div class="chat-wrapper" style="margin-top: 66px;">
     <div class="chat-container">
       <div :class="['chat-set', { center: showSetting }]">
         <Aiset v-if="showSetting" @complete="handleSettingComplete" />
@@ -344,7 +344,7 @@ function scrollToBottom() {
   resize: none;
   border: none;
   outline: none;
-  font-size: 0.95rem;
+  font-size: clamp(14px, 1.5vw, 15px);
   color: #000;
   background: transparent;
   font-family: inherit;
