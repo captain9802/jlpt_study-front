@@ -3,6 +3,7 @@ import Login from '../view/Login.vue';
 import Chat from '../view/Chat.vue';
 import Fav from "@/components/Fav/Fav.vue";
 import WordQuiz from "@/view/quiz/WordQuiz.vue";
+import DetailFav from "@/components/Fav/DetailFav.vue";
 
 const routes = [
     {
@@ -29,6 +30,11 @@ const routes = [
         path: '/sentence_favorites',
         name: 'Fav_sentence',
         component: Fav
+    },
+    {
+        path: '/word_favorites1',
+        name: 'Detail_Fav_word',
+        component: DetailFav
     },
     {
         path: '/word_quiz',
