@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import Login from '../view/Login.vue';
 import Chat from '../view/Chat.vue';
 import Fav from "@/components/Fav/Fav.vue";
+import WordQuiz from "@/view/quiz/WordQuiz.vue";
 
 const routes = [
     {
@@ -28,7 +29,12 @@ const routes = [
         path: '/sentence_favorites',
         name: 'Fav_sentence',
         component: Fav
-    }
+    },
+    {
+        path: '/word_quiz',
+        name: 'Quiz_word',
+        component: WordQuiz
+    },
 ];
 
 const router = createRouter({

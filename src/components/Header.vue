@@ -6,7 +6,6 @@
         <Icon :icon="showMenu ? 'mdi:close' : 'mdi:menu'" class="icon" color="white" width="24" height="24" />
       </div>
     </div>
-ㅇ
     <transition name="slide-right">
       <div class="side-menu" v-if="showMenu">
         <div class="side-menu-inner">
@@ -63,7 +62,8 @@ const user = {
   box-sizing: border-box;
   position: fixed;
   top: 0;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 999;
 }
 
