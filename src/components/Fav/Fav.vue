@@ -40,7 +40,7 @@
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
-const route = useRoute()
+const route = useRoute();
 
 const randomColor = () => {
   const palette = ['#8dafff', '#d0ebc4', '#ffe28c', '#f8b5e4', '#c1e0ff']
@@ -108,6 +108,7 @@ function stopEditing(card) {
   font-weight: bold;
   margin-bottom: 1.5rem;
   text-align: center;
+  margin-top: 0;
 }
 
 .card-grid {

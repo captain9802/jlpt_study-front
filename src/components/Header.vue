@@ -12,12 +12,23 @@
           <img :src="user.avatar" alt="프로필 사진" class="avatar" />
           <div class="nickname">{{ user.nickname }} 님</div>
           <ul>
-            <li><router-link to="/chat">💬 채팅</router-link></li>
-            <li><router-link to="/word_favorites">🌟 단어 즐겨찾기</router-link></li>
-            <li><router-link to="/grammar_favorites">📚 문법 즐겨찾기</router-link></li>
-            <li><router-link to="/sentence_favorites">📝 문장 즐겨찾기</router-link></li>
-            <li><router-link to="/ai-set">⚙️ 챗 설정</router-link></li>
-            <li><router-link to="/ai_clean">🧹 챗 초기화</router-link></li>
+            <li v-for="item in menuItems" :key="item.label">
+              <router-link
+                  v-if="item.to"
+                  :to="item.to"
+                  :class="{ active: $route.path === item.to }"
+                  @click="handleMenuClick(item)"
+              >
+                {{ item.icon }} {{ item.label }}
+              </router-link>
+              <a
+                  v-else
+                  href="#"
+                  @click.prevent="handleMenuClick(item)"
+              >
+                {{ item.icon }} {{ item.label }}
+              </a>
+            </li>
           </ul>
         </div>
       </div>
@@ -34,7 +45,29 @@ const toggleMenu = () => {
   showMenu.value = !showMenu.value
 }
 
-// ✅ 사용자 정보 객체
+const handleMenuClick = (item) => {
+  if (item.label === '챗 설정') {
+    sessionStorage.removeItem('Aiset')
+    showMenu.value = false
+    if (window.location.pathname === '/chat') {
+      window.location.reload()
+    } else {
+      window.location.href = '/chat'
+    }
+  } else {
+    showMenu.value = false
+  }
+}
+
+const menuItems = [
+  { to: '/chat', label: '채팅', icon: '💬' },
+  { to: '/word_favorites', label: '단어 즐겨찾기', icon: '🌟' },
+  { to: '/grammar_favorites', label: '문법 즐겨찾기', icon: '📚' },
+  { to: '/sentence_favorites', label: '문장 즐겨찾기', icon: '📝' },
+  { to: null, label: '챗 설정', icon: '⚙️' },
+  { to: '/ai_clean', label: '챗 초기화', icon: '🧹' }
+]
+
 const user = {
   nickname: '손우성',
   avatar: '/악어.png'
@@ -84,7 +117,7 @@ const user = {
 }
 
 .side-menu {
-  position: absolute;
+  position: fixed;
   top: 67px;
   right: 0;
   width: 250px;
@@ -155,12 +188,6 @@ const user = {
   transform: translateX(4px);
 }
 
-@media (max-width: 1024px) {
-  .side-menu {
-    margin-right: 10px;
-  }
-}
-
 @media (max-width: 600px) {
   .side-menu {
     width: 200px;
@@ -189,5 +216,11 @@ const user = {
 .slide-right-leave-to {
   transform: translateX(100%);
   opacity: 0;
+}
+
+.side-menu-inner a.active {
+  background-color: #e0e7ff;
+  color: #5869ff;
+  transform: translateX(4px);
 }
 </style>

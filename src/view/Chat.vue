@@ -11,45 +11,52 @@
                 :class="['chat-bubble', msg.from === 'me' ? 'me' : 'ai']"
             >
               <img :src="msg.avatar" class="avatar" />
-              <div class="bubble">
-                <p v-html="highlightFavorites(msg.text, msg)"></p>
-                <button
-                    v-if="msg.from === 'ai'"
-                    class="plus-btn"
-                    @click="toggleTooltip(index)"
-                >
-                  <Icon icon="mdi:plus" width="16" height="16" />
-                </button>
-                <div v-if="msg.showTooltip" class="tooltip"
-                     :style="{ width: msg.showInfo || msg.showTranslation ? '100%' : 'auto',
-                     minWidth: msg.showInfo || msg.showTranslation ? '250px' : 'auto' }"
+              <div class="bubble-group">
+                <div class="bubble">
+                  <p v-html="highlightFavorites(msg.text, msg)"></p>
+                  <button
+                      v-if="msg.from === 'ai'"
+                      class="plus-btn"
+                      @click="toggleTooltip(index)"
+                  >
+                    <Icon icon="mdi:plus" width="16" height="16" />
+                  </button>
+                </div>
+                <div
+                    v-if="msg.showTooltip"
+                    class="tooltip"
+                    :style="{
+                      width: msg.showInfo || msg.showTranslation ? 'auto' : 'auto',
+                      minWidth: msg.showInfo || msg.showTranslation ? '250px' : 'auto'
+                    }"
                 >
                   <div class="tooltip-buttons">
-                      <Icon
-                          icon="mdi:information-outline"
-                          class="icon"
-                          :color="msg.showInfo ? '#42a5f5' : '#ccc'"
-                          width="24"
-                          height="24"
-                          @click="toggleInfo(index)"
-                      />
-                      <Icon
-                          :icon="msg.favorite ? 'mdi:star' : 'mdi:star-outline'"
-                          class="icon"
-                          :color="msg.favorite ? '#FFD700' : '#ccc'"
-                          width="24"
-                          height="24"
-                          @click="toggleFavorite(index)"
-                      />
-                      <Icon icon="mdi:volume-high" class="icon" color="#ccc" width="24" height="24" />
-                      <Icon
-                          icon="mdi:translate"
-                          class="icon"
-                          width="24" height="24"
-                          @click="toggleTranslation(index)"
-                          :color="msg.showTranslation ? '#42a5f5' : '#ccc'"
-                      />
-                      <Icon icon="mdi:close" class="icon" color="#ccc" width="24" height="24" @click="closeTooltip(index)"/>
+                    <Icon
+                        icon="mdi:information-outline"
+                        class="icon"
+                        :color="msg.showInfo ? '#42a5f5' : '#ccc'"
+                        width="24"
+                        height="24"
+                        @click="toggleInfo(index)"
+                    />
+                    <Icon
+                        :icon="msg.favorite ? 'mdi:star' : 'mdi:star-outline'"
+                        class="icon"
+                        :color="msg.favorite ? '#FFD700' : '#ccc'"
+                        width="24"
+                        height="24"
+                        @click="toggleFavorite(index)"
+                    />
+                    <Icon icon="mdi:volume-high" class="icon" color="#ccc" width="24" height="24" />
+                    <Icon
+                        icon="mdi:translate"
+                        class="icon"
+                        width="24"
+                        height="24"
+                        @click="toggleTranslation(index)"
+                        :color="msg.showTranslation ? '#42a5f5' : '#ccc'"
+                    />
+                    <Icon icon="mdi:close" class="icon" color="#ccc" width="24" height="24" @click="closeTooltip(index)" />
                   </div>
 
                   <div v-if="msg.showInfo" class="tooltip-info">
@@ -58,7 +65,7 @@
                     <ul>
                       <li v-for="(g, gi) in msg.explanation.grammar" :key="gi">
                         <div class="tooltip-title">
-                        {{ g.text }}: {{ g.meaning }}
+                          {{ g.text }}: {{ g.meaning }}
                           <button @click="toggleGrammarFavorite(index, g.text)" class="fav-button">
                             <Icon
                                 :icon="msg.grammarFavorites?.[g.text] ? 'mdi:star' : 'mdi:star-outline'"
@@ -71,12 +78,17 @@
                       </li>
                     </ul>
                     <p><strong>주요 단어 해설:</strong></p>
-                    <ul>
+                    <ul class="tooltip-ul">
                       <li v-for="(word, i) in msg.words" :key="i">
                         <div class="tooltip-title">
-                        {{ word.text }}（{{ word.reading }}）: {{ word.meaning }}
+                          {{ word.text }}（{{ word.reading }}）: {{ word.meaning }}
                           <button @click="toggleWordFavorite(index, word.text)" class="fav-button">
-                            <Icon :icon="msg.wordFavorites?.[word.text] ? 'mdi:star' : 'mdi:star-outline'" :color="msg.wordFavorites?.[word.text] ? '#FFD700' : '#ccc'" width="18" height="18" />
+                            <Icon
+                                :icon="msg.wordFavorites?.[word.text] ? 'mdi:star' : 'mdi:star-outline'"
+                                :color="msg.wordFavorites?.[word.text] ? '#FFD700' : '#ccc'"
+                                width="18"
+                                height="18"
+                            />
                           </button>
                         </div>
                         <button class="detail-btn" @click="toggleWordDetail(index, i)">[자세히 보기]</button>
@@ -85,15 +97,25 @@
                           <table>
                             <thead>
                             <tr><th>항목</th><th>내용</th></tr>
+                            </thead>
+                            <tbody>
                             <tr><td>뜻</td><td>{{ word.meaning }}</td></tr>
                             <tr><td>음독</td><td>{{ word.onyomi }}</td></tr>
                             <tr><td>훈독</td><td>{{ word.kunyomi }}</td></tr>
-                            </thead>
+                            </tbody>
                           </table>
                           <div class="examples" v-if="word.examples?.length">
-                            <strong>예시</strong>
+                            <strong>예시:</strong>
                             <ul>
                               <li v-for="(ex, j) in word.examples" :key="j">{{ ex }}</li>
+                            </ul>
+                          </div>
+                          <div v-if="word.breakdown?.length" class="kanji-breakdown">
+                            <strong>한자 구성:</strong>
+                            <ul>
+                              <li v-for="(kanji, k) in word.breakdown" :key="k">
+                                {{ kanji.kanji }} – (음독: {{ kanji.onyomi }} / 훈독: {{ kanji.kunyomi }})
+                              </li>
                             </ul>
                           </div>
                         </div>
@@ -124,9 +146,10 @@
   </div>
 </template>
 
+
 <script setup>
 import { Icon } from '@iconify/vue'
-import { ref, nextTick } from 'vue'
+import {ref, nextTick, onMounted} from 'vue'
 import Aiset from '@/components/ai/Aiset.vue'
 
 const showSetting = ref(true)
@@ -135,6 +158,14 @@ const message = ref('')
 const placeholder = '여기에 메세지를 입력해주세요.\n(ここにメッセージを入力してください.)'
 
 const messages = ref([])
+
+onMounted(() => {
+  const isAiset = sessionStorage.getItem('Aiset') === 'true'
+  if (isAiset) {
+    showSetting.value = false
+    handleSettingComplete()
+  }
+})
 
 function highlightFavorites(text, msg) {
   const favorites = new Set([
@@ -200,10 +231,23 @@ function handleSettingComplete() {
           text: '明日',
           reading: 'あした',
           meaning: '내일',
-          onyomi: 'めいにち',
+          onyomi: 'メイニチ',
           kunyomi: 'あした / あす',
+          favorite: false,
+          showDetail: false,
           examples: ['明日会いましょう – 내일 만나자'],
-          showDetail: false
+          breakdown: [
+            {
+              kanji: '明',
+              onyomi: 'メイ',
+              kunyomi: 'あか・あき・あけ'
+            },
+            {
+              kanji: '日',
+              onyomi: 'ニチ',
+              kunyomi: 'ひ・か'
+            }
+          ]
         }
       ]
     })
@@ -307,7 +351,6 @@ function scrollToBottom() {
   width: 100%;
 }
 
-
 .chat-set.center {
   display: flex;
   align-items: center;
@@ -321,6 +364,7 @@ function scrollToBottom() {
   flex-grow: 1;
   overflow: hidden;
   height: 100%;
+  position: relative;
 }
 
 .chat-input-box {
@@ -386,26 +430,39 @@ function scrollToBottom() {
   gap: 2rem;
   padding: 1rem 8px 4rem 0;
   box-sizing: content-box;
+  position: relative;
 }
 
 .chat-bubble {
   display: flex;
+  align-items: flex-start;
   gap: 0.5rem;
-  align-items: center;
 }
 
 .chat-bubble.me {
   flex-direction: row-reverse;
-  text-align: right;
+  align-items: center;
 }
 
 .bubble {
   background-color: #e0f0ff;
   padding: 0 1rem;
   border-radius: 12px;
-  max-width: 75%;
-  position: relative;
   font-size: clamp(14px, 1.5vw, 16px);
+  max-width: 100%;
+  word-break: break-word;
+  position: relative;
+}
+
+.bubble-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 100%;
+}
+
+.chat-bubble.me .bubble-group {
+  align-items: flex-end;
 }
 
 .avatar {
@@ -432,19 +489,19 @@ function scrollToBottom() {
 }
 
 .tooltip {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: #fff;
   color: #333;
   border: 1px solid #ccc;
-  padding: 6px;
+  padding: 10px;
   font-size: 14px;
-  margin-top: 4px;
   border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-  z-index: 100;
-  max-width: 1040px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  background-color: #fefefe;
+  display: inline-block;
+  width: max-content;
+  min-width: 250px;
+  overflow-x: auto;
+  word-break: break-word;
+  z-index: 999;
 }
 
 .tooltip-buttons {
@@ -455,11 +512,25 @@ function scrollToBottom() {
 
 .tooltip-info {
   background-color: #f5f5f5;
-  border-radius: 6px;
+  border-radius: 10px;
   padding: 8px;
   font-size: 0.85rem;
   color: #333;
   min-width: 220px;
+}
+
+.tooltip-ul {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.tooltip-info ul {
+  padding-left: 20px;
+}
+
+.tooltip-title {
+  display: flex;
+  align-items: center;
 }
 
 .icon {
@@ -488,29 +559,19 @@ function scrollToBottom() {
   color: #3e3e3e;
 }
 
-.tooltip-info ul {
-  padding-left: 20px;
-}
-
-.tooltip-title {
-  display: flex;
-  align-items: center;
-}
-
 .word-detail {
   margin-top: 0.5rem;
   border: 1px solid #ddd;
   border-radius: 8px;
   padding: 0.5rem;
   background-color: #f9f9f9;
-  width: 100%; /* 가득 사용 */
+  width: 100%;
   box-sizing: border-box;
 }
 
 .word-detail table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
 }
 
 .word-detail th,
@@ -526,13 +587,20 @@ function scrollToBottom() {
   padding-left: 0.5rem;
 }
 
+.kanji-breakdown {
+  margin-top: 0.5rem;
+  padding-left: 0.5rem;
+}
+
 .chat-enter-from {
   opacity: 0;
   transform: translateY(20px);
 }
+
 .chat-enter-active {
   transition: all 0.4s ease;
 }
+
 .chat-enter-to {
   opacity: 1;
   transform: translateY(0);
@@ -551,3 +619,4 @@ function scrollToBottom() {
   background: transparent;
 }
 </style>
+

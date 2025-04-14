@@ -1,28 +1,36 @@
 <template>
   <div class="dialog">
     <div class="dialog-header">
-      <button class="arrow" @click="prevAvatar">◀</button>
-      <div class="avatar-box">
-        <img :src="currentAvatar.image" alt="avatar" class="avatar" />
-        <div class="avatar-name">{{ currentAvatar.name }}</div>
+        <button class="arrow" @click="prevAvatar">
+          <Icon icon="mdi:chevron-left" width="24" height="24" />
+        </button>
+        <div class="avatar-box">
+          <img :src="currentAvatar.image" alt="avatar" class="avatar" />
+          <div class="avatar-name">{{ currentAvatar.name }}</div>
+        </div>
+        <button class="arrow" @click="nextAvatar">
+          <Icon icon="mdi:chevron-right" width="24" height="24" />
+        </button>
       </div>
-      <button class="arrow" @click="nextAvatar">▶</button>
-    </div>
 
-    <div class="dialog-content">
-      <div
-          v-for="(item, index) in optionList"
-          :key="index"
-          class="option-block"
-      >
-        <div class="option-title">{{ item.label }}</div>
-        <div class="option-row">
-          <button class="arrow" @click="prev(item.key)">◀</button>
-          <div class="option-value">{{ currentOptions[item.key] }}</div>
-          <button class="arrow" @click="next(item.key)">▶</button>
+      <div class="dialog-content">
+        <div
+            v-for="(item, index) in optionList"
+            :key="index"
+            class="option-block"
+        >
+          <div class="option-title">{{ item.label }}</div>
+          <div class="option-row">
+            <button class="arrow" @click="prev(item.key)">
+              <Icon icon="mdi:chevron-left" width="20" height="20" />
+            </button>
+            <div class="option-value">{{ currentOptions[item.key] }}</div>
+            <button class="arrow" @click="next(item.key)">
+              <Icon icon="mdi:chevron-right" width="20" height="20" />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
     <div class="level-select">
       <p><strong>원하는 수준(話のレベル)</strong></p>
@@ -46,6 +54,7 @@
 
 <script setup>
 import { reactive, ref, computed } from 'vue'
+import {Icon} from "@iconify/vue";
 
 const avatarList = [
   { name: '악어', image: '/악어.png' },
@@ -68,6 +77,7 @@ const emit = defineEmits(['complete'])
 
 
 function onComplete() {
+  sessionStorage.setItem('Aiset', 'true')
   console.log('🎉 설정 완료:', {
     avatar: currentAvatar.value,
     options: { ...currentOptions },
@@ -176,6 +186,8 @@ function handleLevelChange(clickedLevel) {
   border: none;
   font-size: 1.2rem;
   cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 
 .dialog-content {
@@ -203,6 +215,7 @@ function handleLevelChange(clickedLevel) {
   background: white;
   border-radius: 10px;
   padding: 8px 12px;
+  height: 27px;
 }
 
 .option-value {
