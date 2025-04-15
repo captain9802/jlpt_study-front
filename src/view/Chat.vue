@@ -41,11 +41,14 @@
                     />
                     <Icon
                         :icon="msg.favorite ? 'mdi:star' : 'mdi:star-outline'"
-                        class="icon"
                         :color="msg.favorite ? '#FFD700' : '#ccc'"
                         width="24"
                         height="24"
-                        @click="toggleFavorite(index)"
+                        @click="() => {
+                        const isAdding = !msg.favorite
+                        toggleFavorite(index)
+                        AddFavContent('sentence', msg, isAdding)
+                        }"
                     />
                     <Icon icon="mdi:volume-high" class="icon" color="#ccc" width="24" height="24" />
                     <Icon
@@ -66,7 +69,11 @@
                       <li v-for="(g, gi) in msg.explanation.grammar" :key="gi">
                         <div class="tooltip-title">
                           {{ g.text }}: {{ g.meaning }}
-                          <button @click="toggleGrammarFavorite(index, g.text)" class="fav-button">
+                          <button @click="() => {
+                            const isAdding = !msg.grammarFavorites?.[g.text]
+                            toggleGrammarFavorite(index, g.text)
+                            AddFavContent('grammar', g.text, isAdding)
+                          }">
                             <Icon
                                 :icon="msg.grammarFavorites?.[g.text] ? 'mdi:star' : 'mdi:star-outline'"
                                 :color="msg.grammarFavorites?.[g.text] ? '#FFD700' : '#ccc'"
@@ -82,7 +89,11 @@
                       <li v-for="(word, i) in msg.words" :key="i">
                         <div class="tooltip-title">
                           {{ word.text }}（{{ word.reading }}）: {{ word.meaning }}
-                          <button @click="toggleWordFavorite(index, word.text)" class="fav-button">
+                          <button @click="() => {console.log(word)
+                            const isAdding = !msg.wordFavorites?.[word.text]
+                            toggleWordFavorite(index, word.text)
+                            AddFavContent('word', word.text, isAdding)
+                          }">
                             <Icon
                                 :icon="msg.wordFavorites?.[word.text] ? 'mdi:star' : 'mdi:star-outline'"
                                 :color="msg.wordFavorites?.[word.text] ? '#FFD700' : '#ccc'"
@@ -143,6 +154,12 @@
         </div>
       </div>
     </div>
+    <AddFav
+        v-if="showFavoriteSelectModal"
+        :wordbooks="userWordbooks"
+        @select="handleAddToBook"
+        @close="closeFavModal"
+    />
   </div>
 </template>
 
@@ -151,6 +168,8 @@
 import { Icon } from '@iconify/vue'
 import {ref, nextTick, onMounted} from 'vue'
 import Aiset from '@/components/ai/Aiset.vue'
+import AddFav from "@/components/Fav/AddFav.vue";
+import { toast } from 'vue3-toastify'
 
 const showSetting = ref(true)
 const message = ref('')
@@ -158,6 +177,15 @@ const message = ref('')
 const placeholder = '여기에 메세지를 입력해주세요.\n(ここにメッセージを入力してください.)'
 
 const messages = ref([])
+
+const userWordbooks = ref([
+  { id: 1, title: '기본 단어장' },
+  { id: 2, title: 'JLPT N3 단어장' }
+])
+
+const selectedFavType = ref(null)
+const selectedFavContent = ref(null)
+const showFavoriteSelectModal = ref(false)
 
 onMounted(() => {
   const isAiset = sessionStorage.getItem('Aiset') === 'true'
@@ -175,6 +203,47 @@ function highlightFavorites(text, msg) {
 
   const pattern = new RegExp(`(${[...favorites].join('|')})`, 'g')
   return text.replace(pattern, '<span class="highlight">$1</span>')
+}
+
+function AddFavContent(type, content, isAdding) {
+  const isSentence = type === 'sentence'
+  const displayName = isSentence ? content.text : content
+  if (!isAdding) {
+    toast.error(
+        `<span style="color:#5869ff;">${displayName}</span>가 <span style="color:#5869ff;">기본 북마크</span>에서 삭제되었습니다.`,
+        {
+          dangerouslyHTMLString: true
+        }
+    )
+    return
+  }
+  selectedFavType.value = type
+  selectedFavContent.value = content
+  showFavoriteSelectModal.value = true
+}
+
+
+
+function handleAddToBook(book) {
+  const type = selectedFavType.value
+  let content = selectedFavContent.value
+  if (type === 'sentence' && typeof content === 'object') {
+    content = content.text
+  }
+  console.log(`✅ ${type} 타입의 항목 '${content}'를 '${book.title}'에 추가합니다.`)
+
+  toast.success(
+      `<span style="color:#5869ff;">${content}</span>가 <span style="color:#5869ff;">${book.title}</span>에 저장되었습니다.`,
+      {
+        dangerouslyHTMLString: true
+      }
+  )
+  showFavoriteSelectModal.value = false
+}
+
+
+function closeFavModal() {
+  showFavoriteSelectModal.value = false
 }
 
 function handleSettingComplete() {
@@ -501,7 +570,7 @@ function scrollToBottom() {
   min-width: 250px;
   overflow-x: auto;
   word-break: break-word;
-  z-index: 999;
+  z-index: 50;
 }
 
 .tooltip-buttons {

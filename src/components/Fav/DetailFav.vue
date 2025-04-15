@@ -186,7 +186,6 @@ const closeDialog = () => {
 const startQuiz = () => {
   dialogRef.value?.close()
   console.log('퀴즈 설정:', quizSettings.value)
-  // 퀴즈 페이지 이동 등
 }
 
 const toggleDetail = (index) => {
