@@ -4,6 +4,9 @@
       <div :class="['chat-set', { center: showSetting }]">
         <Aiset v-if="showSetting" @complete="handleSettingComplete" />
         <div v-else class="chat-content">
+          <div v-if="centerNotice" class="chat-center-notice">
+            {{ centerNotice }}
+          </div>
           <transition-group name="chat" tag="div" class="chat-messages">
             <div
                 v-for="(msg, index) in messages"
@@ -166,10 +169,10 @@
 
 <script setup>
 import { Icon } from '@iconify/vue'
-import {ref, nextTick, onMounted} from 'vue'
+import {ref, nextTick, onMounted, watch, computed} from 'vue'
 import Aiset from '@/components/ai/Aiset.vue'
-import AddFav from "@/components/Fav/AddFav.vue";
 import { toast } from 'vue3-toastify'
+import AddFav from "@/components/fav/AddFav.vue";
 
 const showSetting = ref(true)
 const message = ref('')
@@ -177,6 +180,54 @@ const message = ref('')
 const placeholder = '여기에 메세지를 입력해주세요.\n(ここにメッセージを入力してください.)'
 
 const messages = ref([])
+const allMessageCount = ref(0)
+const memoryList = ref([])
+const noticeMessage = ref('')
+
+const centerNotice = computed(() => {
+  return memoryList.value.length >= 30
+      ? '⚠️ 메모리가 부족하여 더이상 저장할 수 없습니다.'
+      : noticeMessage.value
+})
+
+function handleAiMessage(message) {
+  allMessageCount.value++
+  messages.value.push(message)
+
+  if (allMessageCount.value % 20 === 0) {
+    summarizeMessages()
+  }
+}
+
+
+function generateSummary(messages) {
+  return messages.map(m => m.text).slice(0, 3).join(' / ') + ' ...'
+}
+
+function summarizeMessages() {
+  if (messages.value.length < 30) return
+
+  if (memoryList.value.length >= 30) {
+    messages.value = messages.value.slice(-5)
+    return
+  }
+
+  const summaryTarget = messages.value.slice(0, messages.value.length - 5)
+  const recentMessages = messages.value.slice(-5)
+  const summary = generateSummary(summaryTarget)
+
+  noticeMessage.value = '💬 대화 내용을 축약하여 저장하였습니다.'
+
+  memoryList.value.push({
+    id: Date.now(),
+    summary
+  })
+
+  messages.value = [...recentMessages]
+}
+
+
+
 
 const userWordbooks = ref([
   { id: 1, title: '기본 단어장' },
@@ -194,6 +245,27 @@ onMounted(() => {
     handleSettingComplete()
   }
 })
+
+onMounted(() => {
+  const saved = localStorage.getItem('chatHistory')
+  if (saved) {
+    messages.value = JSON.parse(saved)
+  }
+
+  const savedMemories = localStorage.getItem('chatMemories')
+  if (savedMemories) {
+    memoryList.value = JSON.parse(savedMemories)
+  }
+})
+
+watch(messages, (newVal) => {
+  localStorage.setItem('chatHistory', JSON.stringify(newVal))
+}, { deep: true })
+
+watch(memoryList, (newVal) => {
+  localStorage.setItem('chatMemories', JSON.stringify(newVal))
+}, { deep: true })
+
 
 function highlightFavorites(text, msg) {
   const favorites = new Set([
@@ -222,8 +294,6 @@ function AddFavContent(type, content, isAdding) {
   showFavoriteSelectModal.value = true
 }
 
-
-
 function handleAddToBook(book) {
   const type = selectedFavType.value
   let content = selectedFavContent.value
@@ -250,7 +320,7 @@ function handleSettingComplete() {
   showSetting.value = false
 
   setTimeout(() => {
-    messages.value.push({
+    handleAiMessage({
       from: 'ai',
       text: '안녕! 나는 🐊이야. 반가워!',
       avatar: '/악어.png',
@@ -260,7 +330,7 @@ function handleSettingComplete() {
   }, 100)
 
   setTimeout(() => {
-    messages.value.push({
+    handleAiMessage({
       from: 'ai',
       text: '이름은 뭐라고 불러주면 될까?',
       avatar: '/악어.png',
@@ -269,7 +339,7 @@ function handleSettingComplete() {
     scrollToBottom()
   }, 600)
   setTimeout(() => {
-    messages.value.push({
+    handleAiMessage({
       from: 'ai',
       text: '明日は友',
       avatar: '/악어.png',
@@ -326,7 +396,7 @@ function handleSettingComplete() {
 
 function sendMessage() {
   if (message.value.trim()) {
-    messages.value.push({
+    handleAiMessage({
       from: 'me',
       text: message.value,
       avatar: '/다람쥐.jpeg'
@@ -686,6 +756,13 @@ function scrollToBottom() {
 
 .chat-messages::-webkit-scrollbar-track {
   background: transparent;
+}
+
+.chat-center-notice {
+  text-align: center;
+  color: #888;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
 }
 </style>
 

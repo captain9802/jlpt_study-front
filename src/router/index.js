@@ -1,9 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Login from '../view/Login.vue';
 import Chat from '../view/Chat.vue';
-import Fav from "@/components/Fav/Fav.vue";
+import Fav from "@/components/fav/Fav.vue";
 import WordQuiz from "@/view/quiz/WordQuiz.vue";
-import DetailFav from "@/components/Fav/DetailFav.vue";
+import DetailFav from "@/components/fav/DetailFav.vue";
+import QuizResult from "@/components/result/QuizResult.vue";
+import Aimemory from "@/components/ai/Aimemory.vue";
+import Hiragana from "@/components/study/Hiragana.vue";
 
 const routes = [
     {
@@ -41,6 +44,22 @@ const routes = [
         name: 'Quiz_word',
         component: WordQuiz
     },
+    {
+        path: '/quiz_result',
+        name: 'QuizResult',
+        component: QuizResult
+    },
+    {
+        path: '/chat_memory',
+        name: 'ChatMemory',
+        component: Aimemory
+    },
+    {
+        path: '/study_hiragana',
+        name: 'StudyHiragana',
+        component: Hiragana
+    }
+
 ];
 
 const router = createRouter({

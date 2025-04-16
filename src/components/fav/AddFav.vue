@@ -29,32 +29,51 @@ const close = () => emit('close')
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.3);
+  background: rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
 }
+
 .modal {
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  width: 280px;
+  background: #ffffff;
+  padding: 24px 20px;
+  border-radius: 12px;
+  width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   text-align: center;
 }
+
 .modal h3 {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #333;
 }
+
 .modal ul {
   list-style: none;
   padding: 0;
+  margin: 0;
 }
+
 .modal li {
-  padding: 8px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  background-color: #f5f7ff;
+  color: #1d5fd0;
+  font-weight: 500;
   cursor: pointer;
-  border-bottom: 1px solid #ddd;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  border: 1px solid transparent;
 }
+
 .modal li:hover {
-  background: #f0f0f0;
+  background-color: #e0eaff;
+  border-color: #5869ff;
+  color: #1d3dc0;
 }
+
 </style>

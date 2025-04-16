@@ -3,13 +3,22 @@
     <div class="quiz-top">
       <div class="quiz-index">{{ currentIndex + 1 }} / {{ totalQuestions }}</div>
     </div>
+
     <div class="quiz-card-section">
       <div class="quiz-card">
         <p>{{ currentQuestion.jp }}</p>
-        <button class="tts-btn" @click="speak(currentQuestion.jp)"><Icon icon="mdi:volume-high" width="20" height="20" />
+        <button class="tts-btn" @click="speak(currentQuestion.jp)">
+          <Icon icon="mdi:volume-high" width="20" height="20" />
+        </button>
+      </div>
+
+      <div class="unknown-section">
+        <button class="unknown-btn" @click="markAsUnknown" :disabled="isAnswered">
+          잘 모르겠어요.
         </button>
       </div>
     </div>
+
     <div class="quiz-options-section">
       <div class="quiz-options">
         <button
@@ -21,22 +30,72 @@
             :disabled="isAnswered"
         >
           {{ option }}
+
+          <span v-if="isAnswered" class="translation">
+            ({{ getTranslation(currentQuestion.jp, option) }})
+          </span>
         </button>
       </div>
     </div>
+
     <div class="quiz-actions">
       <button class="action-btn" @click="goToPrev" :disabled="currentIndex === 0">이전 문제</button>
-      <button class="action-btn" @click="goToNext">다음 문제</button>
+      <button
+          v-if="currentIndex < totalQuestions - 1"
+          class="action-btn"
+          @click="goToNext"
+      >
+        다음 문제
+      </button>
+      <button
+          v-else
+          class="action-btn"
+          @click="submitQuiz"
+      >
+        문제 제출
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import {Icon} from "@iconify/vue";
+import { ref, computed, watch } from 'vue'
+import { Icon } from '@iconify/vue'
+import router from "@/router/index.js";
 
-const currentIndex = ref(0)
-const selectedIndex = ref(null)
+const loadIndex = () => parseInt(sessionStorage.getItem('currentIndex')) || 0
+const loadAnswers = () => JSON.parse(sessionStorage.getItem('answers') || '[]')
+
+const currentIndex = ref(loadIndex())
+const answers = ref(loadAnswers())
+
+watch(currentIndex, (val) => {
+  sessionStorage.setItem('currentIndex', val)
+})
+
+watch(answers, (val) => {
+  sessionStorage.setItem('answers', JSON.stringify(val))
+}, { deep: true })
+
+const selectedIndex = computed({
+  get: () => answers.value[currentIndex.value]?.selectedIndex ?? null,
+  set: (val) => {
+    answers.value[currentIndex.value] = {
+      ...(answers.value[currentIndex.value] || {}),
+      selectedIndex: val
+    }
+  }
+})
+
+const markedUnknown = computed({
+  get: () => answers.value[currentIndex.value]?.markedUnknown ?? false,
+  set: (val) => {
+    answers.value[currentIndex.value] = {
+      ...(answers.value[currentIndex.value] || {}),
+      markedUnknown: val
+    }
+  }
+})
 
 const quizData = [
   {
@@ -53,7 +112,7 @@ const quizData = [
 
 const totalQuestions = quizData.length
 const currentQuestion = computed(() => quizData[currentIndex.value])
-const isAnswered = computed(() => selectedIndex.value !== null)
+const isAnswered = computed(() => selectedIndex.value !== null || markedUnknown.value)
 
 const selectOption = (index) => {
   if (!isAnswered.value) {
@@ -61,24 +120,26 @@ const selectOption = (index) => {
   }
 }
 
+const markAsUnknown = () => {
+  markedUnknown.value = true
+}
+
 const optionClass = (i) => {
   if (!isAnswered.value) return ''
   if (i === currentQuestion.value.answer) return 'correct'
-  if (i === selectedIndex.value) return 'wrong'
+  if (markedUnknown.value || i === selectedIndex.value) return 'wrong'
   return ''
 }
 
 const goToNext = () => {
   if (currentIndex.value < quizData.length - 1) {
     currentIndex.value++
-    selectedIndex.value = null
   }
 }
 
 const goToPrev = () => {
   if (currentIndex.value > 0) {
     currentIndex.value--
-    selectedIndex.value = null
   }
 }
 
@@ -86,6 +147,17 @@ const speak = (text) => {
   const utterance = new SpeechSynthesisUtterance(text)
   utterance.lang = 'ja-JP'
   speechSynthesis.speak(utterance)
+}
+
+const getTranslation = (jpText, optionText) => {
+  const isKorean = /[ㄱ-힝]/.test(optionText)
+  return isKorean ? jpText : currentQuestion.value.options[currentQuestion.value.answer]
+}
+
+const submitQuiz = () => {
+  sessionStorage.setItem('quizData', JSON.stringify(quizData))
+  sessionStorage.setItem('answers', JSON.stringify(answers.value))
+  router.push('/quiz_result')
 }
 </script>
 
@@ -123,6 +195,10 @@ const speak = (text) => {
 
 .quiz-card-section {
   margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .quiz-card {
@@ -137,6 +213,29 @@ const speak = (text) => {
   align-items: center;
   font-size: 1.5rem;
   font-weight: 600;
+}
+
+.tts-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #3e3e3e;
+}
+
+.unknown-section {
+  margin-top: 0.5rem;
+}
+
+.unknown-btn {
+  background-color: #eee;
+  border: 1px solid #ccc;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
 }
 
 .quiz-options-section {
@@ -162,6 +261,7 @@ const speak = (text) => {
   cursor: pointer;
   transition: 0.2s;
   color: #3e3e3e;
+  position: relative;
 }
 
 .option-btn.correct {
@@ -177,14 +277,12 @@ const speak = (text) => {
   color: #d12a2a;
 }
 
-.tts-btn {
-  position: absolute;
-  bottom: 12px;
-  right: 16px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #3e3e3e;
+.translation {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: #5869ff;
+  font-weight: 500;
 }
 
 .quiz-actions {
@@ -210,5 +308,4 @@ const speak = (text) => {
   background-color: #eee;
   cursor: not-allowed;
 }
-
 </style>
