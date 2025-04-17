@@ -7,8 +7,7 @@
           JLPT MATE와 함께<br />
           쉬운 일본어 공부
         </h1>
-
-        <button class="kakao-button" @click="kakaoLogin">
+        <button class="kakao-button" @click="login">
           <img
               src="/kakao.png"
               alt="kakao-login"
@@ -22,64 +21,53 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { kakaoLogin } from '@/api/auth'
 
-const showMain = ref(false);
-const showButton = ref(false);
-const KAKAO_KEY = '0a4162b5cdd773131975020c95f4f723';
-const router = useRouter();
+const router = useRouter()
+const KAKAO_KEY = '0a4162b5cdd773131975020c95f4f723'
 
+// ✅ showMain, showButton 추가
+const showMain = ref(false)
+const showButton = ref(false)
 
-function kakaoLogin() {
-  if (window.Kakao) {
-    if (!window.Kakao.isInitialized()) {
-      window.Kakao.init(KAKAO_KEY);
-    }
+const login = () => {
+  if (!window.Kakao) return alert('Kakao SDK가 로딩되지 않았습니다.')
 
-    window.Kakao.Auth.login({
-      scope: 'profile_nickname, account_email',
-      success(authObj) {
-        console.log('✅ 로그인 성공', authObj);
-
-        window.Kakao.API.request({
-          url: '/v2/user/me',
-          success(res) {
-            const kakao_account = res.kakao_account;
-            const nickname = kakao_account.profile.nickname;
-            const email = kakao_account.email;
-
-            console.log('👤 닉네임:', nickname);
-            console.log('📧 이메일:', email);
-            router.push('/chat');
-          },
-          fail(err) {
-            console.error('❌ 사용자 정보 요청 실패', err);
-          },
-        });
-      },
-      fail(err) {
-        console.error('❌ 로그인 실패', err);
-      },
-    });
-  } else {
-    alert('Kakao SDK가 로딩되지 않았습니다.');
+  if (!window.Kakao.isInitialized()) {
+    window.Kakao.init(KAKAO_KEY)
   }
+
+  window.Kakao.Auth.login({
+    scope: 'profile_nickname, account_email',
+    success(authObj) {
+      const profileImg = Math.floor(Math.random() * 5) + 1
+
+      kakaoLogin({ accessToken: authObj.access_token, profileImg })
+          .then(({ token }) => {
+            sessionStorage.setItem('jlpt_token', token)
+            router.push('/chat')
+          })
+          .catch((err) => {
+            console.error('❌ 서버 로그인 실패:', err.response?.data || err.message)
+            alert('로그인에 실패했습니다.')
+          })
+    },
+    fail(err) {
+      console.error('❌ 카카오 로그인 실패:', err)
+    },
+  })
 }
 
 onMounted(() => {
-  if (window.Kakao && !window.Kakao.isInitialized()) {
-    window.Kakao.init(KAKAO_KEY);
-    console.log('✅ Kakao SDK 초기화 완료');
-  }
   setTimeout(() => {
-    showMain.value = true;
-  }, 200);
-
+    showMain.value = true
+  }, 200)
   setTimeout(() => {
-    showButton.value = true;
-  }, 1000);
-});
+    showButton.value = true
+  }, 1000)
+})
 </script>
 
 <style scoped>

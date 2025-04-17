@@ -6,7 +6,7 @@ import WordQuiz from "@/view/quiz/WordQuiz.vue";
 import DetailFav from "@/components/fav/DetailFav.vue";
 import QuizResult from "@/components/result/QuizResult.vue";
 import Aimemory from "@/components/ai/Aimemory.vue";
-import Hiragana from "@/components/study/Hiragana.vue";
+import JpnChobo from "@/components/study/JpnChobo.vue";
 
 const routes = [
     {
@@ -57,7 +57,12 @@ const routes = [
     {
         path: '/study_hiragana',
         name: 'StudyHiragana',
-        component: Hiragana
+        component: JpnChobo
+    },
+    {
+        path: '/study_katakana',
+        name: 'StudyKatakana',
+        component: JpnChobo
     }
 
 ];
