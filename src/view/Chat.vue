@@ -16,7 +16,7 @@
               <img :src="msg.avatar" class="avatar" />
               <div class="bubble-group">
                 <div class="bubble">
-                  <p v-html="highlightFavorites(msg.text, msg)"></p>
+                  <p v-if="msg.text" v-html="highlightFavorites(msg.text, msg)"></p>
                   <button
                       v-if="msg.from === 'ai'"
                       class="plus-btn"
@@ -172,7 +172,8 @@ import { Icon } from '@iconify/vue'
 import {ref, nextTick, onMounted, watch, computed} from 'vue'
 import Aiset from '@/components/ai/Aiset.vue'
 import { toast } from 'vue3-toastify'
-import AddFav from "@/components/fav/AddFav.vue";
+import AddFav from "@/components/fav/AddFav.vue"
+import {sendChat, getAiSettings, getMemories, saveAiSettings, updateLanguageMode} from '@/api/chat'
 
 const showSetting = ref(true)
 const message = ref('')
@@ -183,6 +184,8 @@ const messages = ref([])
 const allMessageCount = ref(0)
 const memoryList = ref([])
 const noticeMessage = ref('')
+const languageMode = ref(false);
+let res = null
 
 const centerNotice = computed(() => {
   return memoryList.value.length >= 30
@@ -198,7 +201,6 @@ function handleAiMessage(message) {
     summarizeMessages()
   }
 }
-
 
 function generateSummary(messages) {
   return messages.map(m => m.text).slice(0, 3).join(' / ') + ' ...'
@@ -226,9 +228,6 @@ function summarizeMessages() {
   messages.value = [...recentMessages]
 }
 
-
-
-
 const userWordbooks = ref([
   { id: 1, title: '기본 단어장' },
   { id: 2, title: 'JLPT N3 단어장' }
@@ -238,15 +237,15 @@ const selectedFavType = ref(null)
 const selectedFavContent = ref(null)
 const showFavoriteSelectModal = ref(false)
 
-onMounted(() => {
-  const isAiset = sessionStorage.getItem('Aiset') === 'true'
-  if (isAiset) {
+onMounted(async () => {
+  res = await getMemories()
+  if (res.data.Aisetting) {
+    console.log(res);
+    languageMode.value = res.data.hasLanguageMode
     showSetting.value = false
     handleSettingComplete()
   }
-})
 
-onMounted(() => {
   const saved = localStorage.getItem('chatHistory')
   if (saved) {
     messages.value = JSON.parse(saved)
@@ -256,6 +255,7 @@ onMounted(() => {
   if (savedMemories) {
     memoryList.value = JSON.parse(savedMemories)
   }
+
 })
 
 watch(messages, (newVal) => {
@@ -266,16 +266,20 @@ watch(memoryList, (newVal) => {
   localStorage.setItem('chatMemories', JSON.stringify(newVal))
 }, { deep: true })
 
-
 function highlightFavorites(text, msg) {
+  if (typeof text !== 'string') return ''
+
   const favorites = new Set([
     ...Object.keys(msg.wordFavorites || {}).filter(word => msg.wordFavorites[word]),
     ...Object.keys(msg.grammarFavorites || {}).filter(g => msg.grammarFavorites[g])
   ])
 
+  if (favorites.size === 0) return text
+
   const pattern = new RegExp(`(${[...favorites].join('|')})`, 'g')
   return text.replace(pattern, '<span class="highlight">$1</span>')
 }
+
 
 function AddFavContent(type, content, isAdding) {
   const isSentence = type === 'sentence'
@@ -283,9 +287,7 @@ function AddFavContent(type, content, isAdding) {
   if (!isAdding) {
     toast.error(
         `<span style="color:#5869ff;">${displayName}</span>가 <span style="color:#5869ff;">기본 북마크</span>에서 삭제되었습니다.`,
-        {
-          dangerouslyHTMLString: true
-        }
+        { dangerouslyHTMLString: true }
     )
     return
   }
@@ -300,111 +302,135 @@ function handleAddToBook(book) {
   if (type === 'sentence' && typeof content === 'object') {
     content = content.text
   }
-  console.log(`✅ ${type} 타입의 항목 '${content}'를 '${book.title}'에 추가합니다.`)
-
   toast.success(
       `<span style="color:#5869ff;">${content}</span>가 <span style="color:#5869ff;">${book.title}</span>에 저장되었습니다.`,
-      {
-        dangerouslyHTMLString: true
-      }
+      { dangerouslyHTMLString: true }
   )
   showFavoriteSelectModal.value = false
 }
-
 
 function closeFavModal() {
   showFavoriteSelectModal.value = false
 }
 
-function handleSettingComplete() {
+async function handleSettingComplete() {
   showSetting.value = false
+  const avatarName = document.querySelector('.avatar-name')?.innerText || 'AI'
+  const stored = JSON.parse(sessionStorage.getItem('Aiset') || '{}')
+
+  const settings = {
+    name: avatarName,
+    personality: stored.options?.personality,
+    tone: stored.options?.tone,
+    voice: stored.options?.voice,
+    level: stored.levels?.[0] || 'N5'
+  }
+
+  sessionStorage.setItem('AiSettings', JSON.stringify(settings))
 
   setTimeout(() => {
-    handleAiMessage({
-      from: 'ai',
-      text: '안녕! 나는 🐊이야. 반가워!',
-      avatar: '/악어.png',
-      showTooltip: false
-    })
-    scrollToBottom()
+    handleAiMessage({ from: 'ai', text: `안녕! 나는 ${settings.name}이야. 반가워!`, avatar: '/악어.png', showTooltip: false })
   }, 100)
 
   setTimeout(() => {
+    if (!languageMode.value) {
     handleAiMessage({
       from: 'ai',
-      text: '이름은 뭐라고 불러주면 될까?',
+      text: '어떤 방식으로 대화할까요?\n1. 일본어로만\n2. 한국어 설명 포함\n3. 혼합 방식',
       avatar: '/악어.png',
       showTooltip: false
     })
-    scrollToBottom()
-  }, 600)
-  setTimeout(() => {
+  }}, 500)
+
+  if (res?.data?.data?.length) {
+    memoryList.value = res.data.data.map((m, i) => ({ id: i, summary: m.summary }))
     handleAiMessage({
       from: 'ai',
-      text: '明日は友',
-      avatar: '/악어.png',
-      showTooltip: false,
-      showInfo: false,
-      showTranslation: false,
-      favorite: false,
-      wordFavorites: {},
-      grammarFavorites: {},
-      explanation: {
-        translation: '내일은 친구와 영화를 보러 갈 예정입니다.',
-        grammar: [
-          { text: '〜に行く', meaning: '~하러 가다' },
-          { text: '予定です', meaning: '~할 예정이다' }
-        ]
-      },
-      words: [
-        {
-          text: '予定',
-          reading: 'よてい',
-          meaning: '예정',
-          onyomi: 'よてい',
-          kunyomi: 'なし',
-          examples: ['予定通り – 예정대로', '予定日 – 예정일'],
-          showDetail: false
-        },
-        {
-          text: '明日',
-          reading: 'あした',
-          meaning: '내일',
-          onyomi: 'メイニチ',
-          kunyomi: 'あした / あす',
-          favorite: false,
-          showDetail: false,
-          examples: ['明日会いましょう – 내일 만나자'],
-          breakdown: [
-            {
-              kanji: '明',
-              onyomi: 'メイ',
-              kunyomi: 'あか・あき・あけ'
-            },
-            {
-              kanji: '日',
-              onyomi: 'ニチ',
-              kunyomi: 'ひ・か'
-            }
-          ]
-        }
-      ]
+      text: `다시 왔구나! 👋 이전에 이런 이야기들을 했었지?\n📝 ${memoryList.value.map(m => m.summary).slice(0, 3).join(' / ')}`,
+      avatar: '/악어.png'
     })
-  }, 900)
-}
-
-
-function sendMessage() {
-  if (message.value.trim()) {
-    handleAiMessage({
-      from: 'me',
-      text: message.value,
-      avatar: '/다람쥐.jpeg'
-    })
-    message.value = ''
-    scrollToBottom()
   }
 }
+
+async function sendMessage() {
+  const userText = message.value.trim()
+  if (!userText) return
+
+  handleAiMessage({ from: 'me', text: userText, avatar: '/다람쥐.jpeg' })
+  message.value = ''
+  scrollToBottom()
+
+  if (!languageMode.value) {
+    if (/^1$/.test(userText)) languageMode.value = 'jp-only'
+    else if (/^2$/.test(userText)) languageMode.value = 'ko'
+    else if (/^3$/.test(userText)) languageMode.value = 'mix'
+
+    if (languageMode.value) {
+      try {
+        await updateLanguageMode(languageMode.value)
+        localStorage.setItem('languageMode', languageMode.value)
+
+        handleAiMessage({
+          from: 'ai',
+          text: '좋아요! 이제 일본어 공부를 시작해볼까요? ✨',
+          avatar: '/악어.png'
+        })
+      } catch (e) {
+        console.error('❌ 언어 모드 저장 실패:', e)
+      }
+      return
+    }
+
+    handleAiMessage({
+      from: 'ai',
+      text: '1, 2, 3 중 하나를 숫자로 입력해 주세요.',
+      avatar: '/악어.png'
+    })
+    return
+  }
+
+  const res = await sendChat({
+    message: userText,
+    language: languageMode.value
+  })
+
+  const content = res.data.choices?.[0]?.message?.content
+
+  if (content) {
+    try {
+      const match = content.match(/\{[\s\S]*\}/)
+      if (!match) throw new Error('JSON 블록을 찾을 수 없음')
+
+      const jsonString = match[0]
+      const parsed = JSON.parse(jsonString)
+      const gptText = content.replace(jsonString, '').trim()
+      handleAiMessage({
+        from: 'ai',
+        text: parsed.text || '',
+        avatar: '/악어.png',
+        explanation: {
+          translation: parsed.translation
+        },
+        words: [],
+        showTooltip: false,
+        showInfo: false,
+        showTranslation: false,
+        favorite: false,
+        wordFavorites: {},
+        grammarFavorites: {}
+      })
+    } catch (err) {
+      console.error('GPT 응답 파싱 에러:', err)
+      handleAiMessage({
+        from: 'ai',
+        text: '⚠️ 응답 파싱 실패. 다시 시도해 주세요.',
+        avatar: '/악어.png'
+      })
+    }
+  }
+
+}
+
 
 function closeTooltip(index) {
   messages.value[index].showTooltip = false
@@ -451,6 +477,8 @@ function scrollToBottom() {
   })
 }
 </script>
+
+
 
 <style scoped>
 .chat-wrapper {
@@ -527,12 +555,12 @@ function scrollToBottom() {
   resize: none;
   border: none;
   outline: none;
-  font-size: clamp(14px, 1.5vw, 15px);
   color: #000;
   background: transparent;
   font-family: inherit;
   line-height: 1.4;
   white-space: pre-line;
+  font-size: 1rem;
 }
 
 .chat-textarea::placeholder {

@@ -54,7 +54,8 @@
 
 <script setup>
 import { reactive, ref, computed } from 'vue'
-import {Icon} from "@iconify/vue";
+import { Icon } from '@iconify/vue'
+import { saveAiSettings } from '@/api/chat'
 
 const avatarList = [
   { name: '악어', image: '/악어.png' },
@@ -65,25 +66,34 @@ const currentAvatarIndex = ref(0)
 const currentAvatar = computed(() => avatarList[currentAvatarIndex.value])
 
 function prevAvatar() {
-  currentAvatarIndex.value =
-      (currentAvatarIndex.value - 1 + avatarList.length) % avatarList.length
+  currentAvatarIndex.value = (currentAvatarIndex.value - 1 + avatarList.length) % avatarList.length
 }
 function nextAvatar() {
-  currentAvatarIndex.value =
-      (currentAvatarIndex.value + 1) % avatarList.length
+  currentAvatarIndex.value = (currentAvatarIndex.value + 1) % avatarList.length
 }
 
 const emit = defineEmits(['complete'])
 
+async function onComplete() {
+  const payload = {
+    name: currentAvatar.value.name,
+    personality: currentOptions.personality,
+    tone: currentOptions.tone,
+    voice: currentOptions.voice,
+    jlpt_level: selectedLevels.value[0] || 'N5'
+  }
 
-function onComplete() {
-  sessionStorage.setItem('Aiset', 'true')
-  console.log('🎉 설정 완료:', {
-    avatar: currentAvatar.value,
-    options: { ...currentOptions },
-    levels: [...selectedLevels.value],
-  })
-  emit('complete')
+  try {
+    await saveAiSettings(payload)
+    sessionStorage.setItem('Aiset', JSON.stringify({
+      avatar: currentAvatar.value,
+      options: { ...currentOptions },
+      levels: [...selectedLevels.value]
+    }))
+    emit('complete')
+  } catch (err) {
+    console.error('AI 설정 저장 실패:', err)
+  }
 }
 
 const optionData = {
@@ -139,7 +149,6 @@ function handleLevelChange(clickedLevel) {
   const clickedIndex = levels.indexOf(clickedLevel)
   selectedLevels.value = levels.slice(clickedIndex)
 }
-
 </script>
 
 <style scoped>
