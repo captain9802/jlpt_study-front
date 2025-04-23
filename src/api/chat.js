@@ -18,3 +18,9 @@ export const sendChat = ({ message, language = 'mix' }) =>
         message,
         language,
     })
+
+
+export const fetchTooltipInfo = async (sentence) => {
+    const res = await API.post('/chat/tooltip', { text: sentence })
+    return res.data
+}

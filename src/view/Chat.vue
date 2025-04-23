@@ -40,7 +40,12 @@
                         :color="msg.showInfo ? '#42a5f5' : '#ccc'"
                         width="24"
                         height="24"
-                        @click="toggleInfo(index)"
+                        @click="() => {
+                          toggleInfo(index)
+                          if (!msg.explanation || msg.words?.length === 0) {
+                            handleTooltipClick(index, msg)
+                          }
+                        }"
                     />
                     <Icon
                         :icon="msg.favorite ? 'mdi:star' : 'mdi:star-outline'"
@@ -64,7 +69,6 @@
                     />
                     <Icon icon="mdi:close" class="icon" color="#ccc" width="24" height="24" @click="closeTooltip(index)" />
                   </div>
-
                   <div v-if="msg.showInfo" class="tooltip-info">
                     <p><strong>문장 해석:</strong> {{ msg.explanation.translation }}</p>
                     <p><strong>문법 표현:</strong></p>
@@ -148,6 +152,8 @@
                 v-model="message"
                 class="chat-textarea"
                 :placeholder="placeholder"
+                :maxlength="maxLength"
+                @input="checkLength"
                 @keydown.enter.exact.prevent="sendMessage"
             />
             <button class="send-button" @click="sendMessage">
@@ -173,8 +179,8 @@ import {ref, nextTick, onMounted, watch, computed} from 'vue'
 import Aiset from '@/components/ai/Aiset.vue'
 import { toast } from 'vue3-toastify'
 import AddFav from "@/components/fav/AddFav.vue"
-import {sendChat, getAiSettings, getMemories, saveAiSettings, updateLanguageMode} from '@/api/chat'
-
+import {sendChat, getAiSettings, getMemories, saveAiSettings, updateLanguageMode, fetchTooltipInfo } from '@/api/chat'
+const loadingTooltips = ref({})
 const showSetting = ref(true)
 const message = ref('')
 
@@ -186,6 +192,50 @@ const memoryList = ref([])
 const noticeMessage = ref('')
 const languageMode = ref(false);
 let res = null
+const userInput = ref('')
+const maxLength = 200
+
+const toggleInfo = async (index) => {
+  const msg = messages.value[index]
+  msg.showInfo = !msg.showInfo
+
+  if (
+      msg.showInfo &&
+      !msg.__fetchedTooltipData &&
+      !loadingTooltips.value[index]
+  ) {
+    await handleTooltipClick(index, msg)
+  }
+}
+
+const handleTooltipClick = async (index, msg) => {
+  if (
+      msg.__fetchedTooltipData ||
+      loadingTooltips.value[index]
+  ) return
+
+  loadingTooltips.value[index] = true
+  try {
+    const data = await fetchTooltipInfo(msg.text)
+    console.log('[✅ 받은 툴팁 데이터]', data)
+    msg.explanation = {
+      translation: msg.explanation?.translation ?? data.explanation.translation,
+      grammar: data.explanation.grammar,
+    }
+    msg.words = data.words
+    msg.__fetchedTooltipData = true
+  } catch (err) {
+    console.error('툴팁 정보 요청 실패:', err)
+  } finally {
+    loadingTooltips.value[index] = false
+  }
+}
+
+function checkLength() {
+  if (userInput.value.length > maxLength) {
+    userInput.value = userInput.value.slice(0, maxLength)
+  }
+}
 
 const centerNotice = computed(() => {
   return memoryList.value.length >= 30
@@ -398,27 +448,65 @@ async function sendMessage() {
 
   if (content) {
     try {
-      const match = content.match(/\{[\s\S]*\}/)
+      const match = content.match(/\[[\s\S]*\]|\{[\s\S]*\}/)
       if (!match) throw new Error('JSON 블록을 찾을 수 없음')
 
       const jsonString = match[0]
       const parsed = JSON.parse(jsonString)
-      const gptText = content.replace(jsonString, '').trim()
-      handleAiMessage({
-        from: 'ai',
-        text: parsed.text || '',
-        avatar: '/악어.png',
-        explanation: {
-          translation: parsed.translation
-        },
-        words: [],
-        showTooltip: false,
-        showInfo: false,
-        showTranslation: false,
-        favorite: false,
-        wordFavorites: {},
-        grammarFavorites: {}
+
+      const parsedArray = Array.isArray(parsed) ? parsed : [parsed]
+
+      parsedArray.forEach((parsed) => {
+        let displayText = ''
+
+        if (Array.isArray(parsed.words) && Array.isArray(parsed.translation)) {
+          displayText = parsed.words.map((item, idx) => {
+            const ko = parsed.translation[idx]?.word ?? ''
+            const level = item.level || parsed.translation[idx]?.level || ''
+            return `${item.word} : ${ko} / ${level}`
+          }).join('\n')
+        }
+
+        else if (typeof parsed.text === 'string') {
+          displayText = parsed.text
+        }
+
+        else {
+          displayText = '⚠️ 알 수 없는 응답 형식입니다.'
+        }
+
+        if (typeof parsed.text === 'string' && typeof parsed.translation === 'string') {
+          if (looksLikeFullKorean(parsed.text) && !looksLikeFullKorean(parsed.translation)) {
+            const temp = parsed.text
+            parsed.text = parsed.translation
+            parsed.translation = temp
+          }
+        }
+
+        let finalTranslation = ''
+        if (Array.isArray(parsed.translation)) {
+          finalTranslation = parsed.translation.map(t => `${t.word} / ${t.level}`).join('\n')
+        } else {
+          finalTranslation = parsed.translation || ''
+        }
+
+        handleAiMessage({
+          from: 'ai',
+          text: displayText,
+          avatar: '/악어.png',
+          explanation: {
+            translation: finalTranslation
+          },
+          words: parsed.words || [],
+          showTooltip: false,
+          showInfo: false,
+          showTranslation: false,
+          favorite: false,
+          wordFavorites: {},
+          grammarFavorites: {}
+        })
       })
+
     } catch (err) {
       console.error('GPT 응답 파싱 에러:', err)
       handleAiMessage({
@@ -427,8 +515,16 @@ async function sendMessage() {
         avatar: '/악어.png'
       })
     }
-  }
 
+}
+
+}
+
+function looksLikeFullKorean(text) {
+  if (!text) return false
+  const koreanMatch = text.match(/[가-힣]/g) || []
+  const ratio = koreanMatch.length / text.length
+  return ratio > 0.5
 }
 
 
@@ -440,10 +536,6 @@ function toggleTooltip(index) {
   messages.value[index].showTooltip = !messages.value[index].showTooltip
 }
 
-function toggleInfo(index) {
-  messages.value[index].showInfo = !messages.value[index].showInfo
-  messages.value[index].showTranslation = false
-}
 
 function toggleFavorite(index) {
   messages.value[index].favorite = !messages.value[index].favorite
@@ -619,6 +711,7 @@ function scrollToBottom() {
   max-width: 100%;
   word-break: break-word;
   position: relative;
+  white-space: pre-line;
 }
 
 .bubble-group {
@@ -640,7 +733,7 @@ function scrollToBottom() {
 
 .plus-btn {
   position: absolute;
-  right: -10px;
+  right: -1px;
   bottom: -10px;
   width: 24px;
   height: 24px;
