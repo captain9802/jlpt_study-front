@@ -35,8 +35,8 @@ const routes = [
         component: Fav
     },
     {
-        path: '/word_favorites1',
-        name: 'Detail_Fav_word',
+        path: '/word_favorites/:id',
+        name: 'WordFavoritesDetail',
         component: DetailFav
     },
     {

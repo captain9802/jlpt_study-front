@@ -90,86 +90,26 @@
 
 
 <script setup>
-import { ref } from 'vue'
+import {onMounted, ref} from 'vue'
 import { Icon } from '@iconify/vue'
 import { useRoute } from 'vue-router'
+import {getWordsByList} from "@/api/fav.js";
 
 const route = useRoute()
-const folderName = route.params.name || '단어장 이름'
+const listId = route.params.id
+const folderName = route.params.name || '단어장'
 
-const wordList = ref([
-  {
-    text: '明日',
-    reading: 'あした',
-    meaning: '내일',
-    onyomi: 'メイニチ',
-    kunyomi: 'あした / あす',
+const wordList = ref([])
+
+onMounted(async () => {
+  const fetchedWords = await getWordsByList(listId)
+
+  wordList.value = fetchedWords.map(word => ({
+    ...word,
     favorite: true,
-    showDetail: false,
-    examples: ['明日会いましょう – 내일 만나자'],
-    breakdown: [
-      { kanji: '明', onyomi: 'メイ', kunyomi: 'あか・あき・あけ' },
-      { kanji: '日', onyomi: 'ニチ', kunyomi: 'ひ・か' }
-    ]
-  },
-  {
-    text: '勉強',
-    reading: 'べんきょう',
-    meaning: '공부',
-    onyomi: 'ベン・キョウ',
-    kunyomi: '',
-    favorite: false,
-    showDetail: false,
-    examples: ['毎日勉強しています – 매일 공부하고 있어요'],
-    breakdown: [
-      { kanji: '勉', onyomi: 'ベン', kunyomi: '' },
-      { kanji: '強', onyomi: 'キョウ', kunyomi: 'つよ・し' }
-    ]
-  },
-  {
-    text: '病院',
-    reading: 'びょういん',
-    meaning: '병원',
-    onyomi: 'ビョウ・イン',
-    kunyomi: '',
-    favorite: false,
-    showDetail: false,
-    examples: ['病院に行きます – 병원에 갑니다'],
-    breakdown: [
-      { kanji: '病', onyomi: 'ビョウ', kunyomi: 'や・やまい' },
-      { kanji: '院', onyomi: 'イン', kunyomi: '' }
-    ]
-  },
-  {
-    text: '試験',
-    reading: 'しけん',
-    meaning: '시험',
-    onyomi: 'シ・ケン',
-    kunyomi: '',
-    favorite: false,
-    showDetail: false,
-    examples: ['試験を受けます – 시험을 봅니다'],
-    breakdown: [
-      { kanji: '試', onyomi: 'シ', kunyomi: 'こころ・ため' },
-      { kanji: '験', onyomi: 'ケン', kunyomi: 'ため' }
-    ]
-  },
-  {
-    text: '図書館',
-    reading: 'としょかん',
-    meaning: '도서관',
-    onyomi: 'ト・ショ・カン',
-    kunyomi: '',
-    favorite: false,
-    showDetail: false,
-    examples: ['図書館で本を借りました – 도서관에서 책을 빌렸어요'],
-    breakdown: [
-      { kanji: '図', onyomi: 'ト', kunyomi: 'はか' },
-      { kanji: '書', onyomi: 'ショ', kunyomi: 'か・しょ' },
-      { kanji: '館', onyomi: 'カン', kunyomi: '' }
-    ]
-  }
-])
+    showDetail: false
+  }))
+})
 
 const dialogRef = ref();
 const quizSettings = ref({

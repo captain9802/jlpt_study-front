@@ -17,8 +17,9 @@
 
 <script setup>
 const props = defineProps({
-  wordbooks: Array
+  wordbooks: Array,
 })
+
 const emit = defineEmits(['select', 'close'])
 
 const select = (book) => emit('select', book)

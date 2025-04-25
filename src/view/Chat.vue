@@ -96,10 +96,10 @@
                       <li v-for="(word, i) in msg.words" :key="i">
                         <div class="tooltip-title">
                           {{ word.text }}（{{ word.reading }}）: {{ word.meaning }}
-                          <button @click="() => {console.log(word)
+                          <button @click="() => {
                             const isAdding = !msg.wordFavorites?.[word.text]
                             toggleWordFavorite(index, word.text)
-                            AddFavContent('word', word.text, isAdding)
+                            AddFavContent('word', word, isAdding)
                           }">
                             <Icon
                                 :icon="msg.wordFavorites?.[word.text] ? 'mdi:star' : 'mdi:star-outline'"
@@ -180,6 +180,7 @@ import Aiset from '@/components/ai/Aiset.vue'
 import { toast } from 'vue3-toastify'
 import AddFav from "@/components/fav/AddFav.vue"
 import {sendChat, getAiSettings, getMemories, saveAiSettings, updateLanguageMode, fetchTooltipInfo } from '@/api/chat'
+import {addWordToList, getWordLists} from "@/api/fav.js";
 const loadingTooltips = ref({})
 const showSetting = ref(true)
 const message = ref('')
@@ -278,10 +279,7 @@ function summarizeMessages() {
   messages.value = [...recentMessages]
 }
 
-const userWordbooks = ref([
-  { id: 1, title: '기본 단어장' },
-  { id: 2, title: 'JLPT N3 단어장' }
-])
+const userWordbooks = ref([])
 
 const selectedFavType = ref(null)
 const selectedFavContent = ref(null)
@@ -308,6 +306,12 @@ onMounted(async () => {
 
 })
 
+onMounted(async () => {
+  const res = await getWordLists()
+  userWordbooks.value = res
+})
+
+
 watch(messages, (newVal) => {
   localStorage.setItem('chatHistory', JSON.stringify(newVal))
 }, { deep: true })
@@ -330,7 +334,6 @@ function highlightFavorites(text, msg) {
   return text.replace(pattern, '<span class="highlight">$1</span>')
 }
 
-
 function AddFavContent(type, content, isAdding) {
   const isSentence = type === 'sentence'
   const displayName = isSentence ? content.text : content
@@ -346,18 +349,59 @@ function AddFavContent(type, content, isAdding) {
   showFavoriteSelectModal.value = true
 }
 
-function handleAddToBook(book) {
-  const type = selectedFavType.value
-  let content = selectedFavContent.value
-  if (type === 'sentence' && typeof content === 'object') {
-    content = content.text
+async function handleAddToBook(book) {
+  const content = selectedFavContent.value
+  console.log("아오")
+
+  console.log('[🔥 최종 전송 데이터]', {
+    list_id: book.id,
+    text: content.text,
+    reading: content.reading,
+    meaning: content.meaning,
+    onyomi: content.onyomi,
+    kunyomi: content.kunyomi,
+    examples: content.examples,
+    breakdown: content.breakdown
+  })
+
+  const payload = {
+    list_id: book.id,
+    text: content.text,
+    reading: content.reading,
+    meaning: content.meaning,
+    onyomi: content.onyomi,
+    kunyomi: content.kunyomi,
+    examples: content.examples,
+    breakdown: content.breakdown
   }
-  toast.success(
-      `<span style="color:#5869ff;">${content}</span>가 <span style="color:#5869ff;">${book.title}</span>에 저장되었습니다.`,
-      { dangerouslyHTMLString: true }
-  )
+
+  console.log('[📦 payload 타입]', typeof payload, payload)
+  try {
+    await addWordToList({
+      list_id: book.id,
+      text: content.text,
+      reading: content.reading,
+      meaning: content.meaning,
+      onyomi: content.onyomi,
+      kunyomi: content.kunyomi,
+      examples: JSON.parse(JSON.stringify(content.examples || [])),  // JSON 방식으로 복사
+      breakdown: JSON.parse(JSON.stringify(content.breakdown || [])) // JSON 방식으로 복사
+    })
+
+    console.log("이오")
+
+    toast.success(
+        `<span style="color:#5869ff;">${content.text}</span>가 <span style="color:#5869ff;">${book.title}</span>에 저장되었습니다.`,
+        { dangerouslyHTMLString: true }
+    )
+  } catch (err) {
+    toast.error('단어 저장 실패')
+    console.error('❌ 단어 저장 오류:', err)
+  }
+
   showFavoriteSelectModal.value = false
 }
+
 
 function closeFavModal() {
   showFavoriteSelectModal.value = false
@@ -457,7 +501,7 @@ async function sendMessage() {
       const parsedArray = Array.isArray(parsed) ? parsed : [parsed]
 
       parsedArray.forEach((parsed) => {
-        let displayText = ''
+        let displayText = parsed.text // ← 여기서 text를 직접 대입
 
         if (Array.isArray(parsed.words) && Array.isArray(parsed.translation)) {
           displayText = parsed.words.map((item, idx) => {
@@ -475,11 +519,20 @@ async function sendMessage() {
           displayText = '⚠️ 알 수 없는 응답 형식입니다.'
         }
 
+        console.log('text:', parsed.text)
+        console.log('translation:', parsed.translation)
+        console.log('isTextKorean:', looksLikeFullKorean(parsed.text))
+        console.log('isTranslationKorean:', looksLikeFullKorean(parsed.translation))
+
+
+
         if (typeof parsed.text === 'string' && typeof parsed.translation === 'string') {
           if (looksLikeFullKorean(parsed.text) && !looksLikeFullKorean(parsed.translation)) {
             const temp = parsed.text
             parsed.text = parsed.translation
             parsed.translation = temp
+
+            displayText = parsed.text
           }
         }
 
@@ -517,7 +570,6 @@ async function sendMessage() {
     }
 
 }
-
 }
 
 function looksLikeFullKorean(text) {
@@ -568,6 +620,7 @@ function scrollToBottom() {
     }
   })
 }
+
 </script>
 
 

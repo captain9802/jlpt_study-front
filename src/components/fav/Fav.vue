@@ -10,6 +10,7 @@
         <div
             class="word-card"
             :style="{ backgroundColor: card.color || '#eee' }"
+            @click="goToDetail(card)"
         >
           <div class="card-main">{{ card.preview || '미리보기 없음' }}</div>
 
@@ -44,77 +45,87 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import {Icon} from "@iconify/vue";
-import {toast} from "vue3-toastify";
+import { Icon } from "@iconify/vue"
+import { toast } from "vue3-toastify"
+import {
+  getWordLists,
+  createWordList,
+  updateWordList,
+  deleteWordList
+} from '@/api/fav'
+import router from "@/router/index.js";
 
-const route = useRoute();
+const route = useRoute()
+
+const cardList = ref([])
+
+const goToDetail = (card) => {
+  router.push(`/word_favorites/${card.id}`)
+}
+
+const pageTitle = computed(() => {
+  if (route.path === '/word_favorites') return '내 단어장'
+  if (route.path === '/grammar_favorites') return '문법 즐겨찾기'
+  if (route.path === '/sentence_favorites') return '문장 즐겨찾기'
+  return '즐겨찾기'
+})
 
 const randomColor = () => {
   const palette = ['#8dafff', '#d0ebc4', '#ffe28c', '#f8b5e4', '#c1e0ff']
   return palette[Math.floor(Math.random() * palette.length)]
 }
 
-function confirmDelete(card) {
-  if (confirm('정말 삭제하시겠습니까?')) {
-    toast.error(
-        `<span style="color:#5869ff;">${card.label}</span>(이)가 즐겨찾기에서 삭제되었습니다.`,
-        {
-          dangerouslyHTMLString: true
-        }
-    )
-    cardList.value = cardList.value.filter(c => c.id !== card.id)
+const fetchLists = async () => {
+  if (route.path === '/word_favorites') {
+    const lists = await getWordLists()
+    cardList.value = lists.map(list => ({
+      ...list,
+      label: list.title,
+      preview: '미리보기 없음',
+      editing: false
+    }))
   }
 }
 
-const baseCards = {
-  '/word_favorites': {
-    title: '내 단어장',
-    cards: [
-      { id: 1, label: '저장 된 단어', color: '#8dafff', preview: 'ありがとう' },
-      { id: 2, label: '일상생활용', color: '#d0ebc4', preview: 'ごはん' },
-      { id: 3, label: 'N3 시험용', color: '#ffe28c', preview: '可能性' }
-    ]
-  },
-  '/grammar_favorites': {
-    title: '문법 즐겨찾기',
-    cards: [
-      { id: 1, label: '중요 문법', color: '#8dafff', preview: '〜ている' },
-      { id: 2, label: '시험 대비', color: '#d0ebc4', preview: '〜ながら' },
-      { id: 3, label: 'JLPT N3 문법', color: '#ffe28c', preview: '〜ことがある' }
-    ]
-  },
-  '/sentence_favorites': {
-    title: '문장 즐겨찾기',
-    cards: [
-      { id: 1, label: '좋아하는 문장', color: '#8dafff', preview: '明日は映画を見に行く予定です。' },
-      { id: 2, label: '일본어 회화', color: '#d0ebc4', preview: 'お元気ですか？' },
-      { id: 3, label: 'N3 듣기 예문', color: '#ffe28c', preview: '駅までどうやって行きますか？' }
-    ]
-  }
-}
-
-const pageTitle = computed(() => baseCards[route.path]?.title || '즐겨찾기')
-const cardList = ref(baseCards[route.path]?.cards.map(card => ({ ...card, editing: false })) || [])
-
-function addCard() {
+const addCard = async () => {
+  const color = randomColor()
+  const newList = await createWordList({
+    title: '새 단어장',
+    color
+  })
   cardList.value.push({
-    id: Date.now(),
-    label: '새 단어장',
-    color: randomColor(),
+    ...newList,
+    label: newList.title,
     preview: '예시 항목',
     editing: false
   })
 }
 
-function startEditing(card) {
+const stopEditing = async (card) => {
+  card.editing = false
+  await updateWordList(card.id, { title: card.label, color: card.color })
+}
+
+const confirmDelete = async (card) => {
+  if (confirm('정말 삭제하시겠습니까?')) {
+    await deleteWordList(card.id)
+    toast.error(
+        `<span style="color:#5869ff;">${card.label}</span>(이)가 즐겨찾기에서 삭제되었습니다.`,
+        { dangerouslyHTMLString: true }
+    )
+    cardList.value = cardList.value.filter(c => c.id !== card.id)
+  }
+}
+
+const startEditing = (card) => {
   card.editing = true
 }
 
-function stopEditing(card) {
-  card.editing = false
-}
+onMounted(() => {
+  fetchLists()
+})
 </script>
 
 <style scoped>
@@ -159,6 +170,7 @@ function stopEditing(card) {
   max-width: 180px;
   color: #333;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
 }
 
 .delete-icon {
