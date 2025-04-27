@@ -39,5 +39,16 @@ export const deleteWord = async (id) => {
     return res.data
 }
 
+export const getFavoriteWords = async () => {
+    const res = await API.get('/favorites/words')
+    return res.data
+}
 
-
+export const toggleFavorites = async (wordData) => {
+    const res = await API.post('/favorites/words/toggle', wordData, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    return res.data
+}

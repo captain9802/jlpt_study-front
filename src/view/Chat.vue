@@ -2,11 +2,8 @@
   <div class="chat-wrapper" style="margin-top: 66px;">
     <div class="chat-container">
       <div :class="['chat-set', { center: showSetting }]">
-        <Aiset v-if="showSetting" @complete="handleSettingComplete" />
+        <Aiset v-if="showSetting === true" @complete="handleSettingComplete" />
         <div v-else class="chat-content">
-          <div v-if="centerNotice" class="chat-center-notice">
-            {{ centerNotice }}
-          </div>
           <transition-group name="chat" tag="div" class="chat-messages">
             <div
                 v-for="(msg, index) in messages"
@@ -96,14 +93,10 @@
                       <li v-for="(word, i) in msg.words" :key="i">
                         <div class="tooltip-title">
                           {{ word.text }}（{{ word.reading }}）: {{ word.meaning }}
-                          <button @click="() => {
-                            const isAdding = !msg.wordFavorites?.[word.text]
-                            toggleWordFavorite(index, word.text)
-                            AddFavContent('word', word, isAdding)
-                          }">
+                          <button @click="handleWordFavoriteClick(word)">
                             <Icon
-                                :icon="msg.wordFavorites?.[word.text] ? 'mdi:star' : 'mdi:star-outline'"
-                                :color="msg.wordFavorites?.[word.text] ? '#FFD700' : '#ccc'"
+                                :icon="isFavorite(word) ? 'mdi:star' : 'mdi:star-outline'"
+                                :color="isFavorite(word) ? '#FFD700' : '#ccc'"
                                 width="18"
                                 height="18"
                             />
@@ -179,32 +172,61 @@ import {ref, nextTick, onMounted, watch, computed} from 'vue'
 import Aiset from '@/components/ai/Aiset.vue'
 import { toast } from 'vue3-toastify'
 import AddFav from "@/components/fav/AddFav.vue"
-import {sendChat, getAiSettings, getMemories, saveAiSettings, updateLanguageMode, fetchTooltipInfo } from '@/api/chat'
-import {addWordToList, getWordLists} from "@/api/fav.js";
+import {sendChat, getMemories, updateLanguageMode, fetchTooltipInfo } from '@/api/chat'
+import {getFavoriteWords, getWordLists, toggleFavorites} from "@/api/fav.js";
 const loadingTooltips = ref({})
-const showSetting = ref(true)
+const showSetting = ref(false)
 const message = ref('')
 
 const placeholder = '여기에 메세지를 입력해주세요.\n(ここにメッセージを入力してください.)'
 
 const messages = ref([])
-const allMessageCount = ref(0)
-const memoryList = ref([])
-const noticeMessage = ref('')
 const languageMode = ref(false);
 let res = null
 const userInput = ref('')
 const maxLength = 200
+const favoriteWords = ref([])
+
+onMounted(async () => {
+  await loadFavoriteWords()
+})
+
+const handleWordFavoriteClick = (word) => {
+  const isFavorited = isFavorite(word);
+  console.log(isFavorited);
+  if (isFavorited) {
+    selectedFavContent.value = word;
+    handleAddToBook({ id: word.list_id, title: '' }, true);
+  } else {
+    AddFavContent('word', word, true);
+  }
+};
+
+const favoriteSet = computed(() => {
+  const set = new Set();
+
+  for (const item of favoriteWords.value) {
+    set.add(item.text);
+
+    if (item.breakdown) {
+      const kanji = item.breakdown.map(b => b.kanji).join('');
+      if (kanji.length > 0) set.add(kanji);
+    }
+  }
+
+  return set;
+});
+
+
+function isFavorite(word) {
+  return favoriteSet.value.has(word.text);
+}
+
 
 const toggleInfo = async (index) => {
   const msg = messages.value[index]
   msg.showInfo = !msg.showInfo
-
-  if (
-      msg.showInfo &&
-      !msg.__fetchedTooltipData &&
-      !loadingTooltips.value[index]
-  ) {
+  if (msg.showInfo && !msg.__fetchedTooltipData && !loadingTooltips.value[index]) {
     await handleTooltipClick(index, msg)
   }
 }
@@ -238,45 +260,8 @@ function checkLength() {
   }
 }
 
-const centerNotice = computed(() => {
-  return memoryList.value.length >= 30
-      ? '⚠️ 메모리가 부족하여 더이상 저장할 수 없습니다.'
-      : noticeMessage.value
-})
-
 function handleAiMessage(message) {
-  allMessageCount.value++
   messages.value.push(message)
-
-  if (allMessageCount.value % 20 === 0) {
-    summarizeMessages()
-  }
-}
-
-function generateSummary(messages) {
-  return messages.map(m => m.text).slice(0, 3).join(' / ') + ' ...'
-}
-
-function summarizeMessages() {
-  if (messages.value.length < 30) return
-
-  if (memoryList.value.length >= 30) {
-    messages.value = messages.value.slice(-5)
-    return
-  }
-
-  const summaryTarget = messages.value.slice(0, messages.value.length - 5)
-  const recentMessages = messages.value.slice(-5)
-  const summary = generateSummary(summaryTarget)
-
-  noticeMessage.value = '💬 대화 내용을 축약하여 저장하였습니다.'
-
-  memoryList.value.push({
-    id: Date.now(),
-    summary
-  })
-
-  messages.value = [...recentMessages]
 }
 
 const userWordbooks = ref([])
@@ -293,115 +278,79 @@ onMounted(async () => {
     showSetting.value = false
     handleSettingComplete()
   }
-
-  const saved = localStorage.getItem('chatHistory')
-  if (saved) {
-    messages.value = JSON.parse(saved)
-  }
-
-  const savedMemories = localStorage.getItem('chatMemories')
-  if (savedMemories) {
-    memoryList.value = JSON.parse(savedMemories)
-  }
-
 })
 
 onMounted(async () => {
-  const res = await getWordLists()
+  res = await getWordLists()
   userWordbooks.value = res
 })
 
-
-watch(messages, (newVal) => {
-  localStorage.setItem('chatHistory', JSON.stringify(newVal))
-}, { deep: true })
-
-watch(memoryList, (newVal) => {
-  localStorage.setItem('chatMemories', JSON.stringify(newVal))
-}, { deep: true })
-
 function highlightFavorites(text, msg) {
-  if (typeof text !== 'string') return ''
+  if (typeof text !== 'string') return '';
 
-  const favorites = new Set([
-    ...Object.keys(msg.wordFavorites || {}).filter(word => msg.wordFavorites[word]),
-    ...Object.keys(msg.grammarFavorites || {}).filter(g => msg.grammarFavorites[g])
-  ])
+  const favorites = [...favoriteSet.value];
 
-  if (favorites.size === 0) return text
+  if (favorites.length === 0) return text;
 
-  const pattern = new RegExp(`(${[...favorites].join('|')})`, 'g')
-  return text.replace(pattern, '<span class="highlight">$1</span>')
+  favorites.sort((a, b) => b.length - a.length);
+  const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`(${favorites.map(escapeRegExp).join('|')})`, 'g');
+
+  return text.replace(pattern, '<span class="highlight">$1</span>');
 }
 
+
 function AddFavContent(type, content, isAdding) {
-  const isSentence = type === 'sentence'
-  const displayName = isSentence ? content.text : content
-  if (!isAdding) {
-    toast.error(
-        `<span style="color:#5869ff;">${displayName}</span>가 <span style="color:#5869ff;">기본 북마크</span>에서 삭제되었습니다.`,
-        { dangerouslyHTMLString: true }
-    )
-    return
-  }
   selectedFavType.value = type
   selectedFavContent.value = content
   showFavoriteSelectModal.value = true
 }
 
-async function handleAddToBook(book) {
-  const content = selectedFavContent.value
-  console.log("아오")
-
-  console.log('[🔥 최종 전송 데이터]', {
-    list_id: book.id,
-    text: content.text,
-    reading: content.reading,
-    meaning: content.meaning,
-    onyomi: content.onyomi,
-    kunyomi: content.kunyomi,
-    examples: content.examples,
-    breakdown: content.breakdown
-  })
-
-  const payload = {
-    list_id: book.id,
-    text: content.text,
-    reading: content.reading,
-    meaning: content.meaning,
-    onyomi: content.onyomi,
-    kunyomi: content.kunyomi,
-    examples: content.examples,
-    breakdown: content.breakdown
-  }
-
-  console.log('[📦 payload 타입]', typeof payload, payload)
+async function loadFavoriteWords() {
   try {
-    await addWordToList({
+    const favorites = await getFavoriteWords();
+    favoriteWords.value = favorites;
+  } catch (error) {
+    console.error('즐겨찾기 단어 불러오기 실패:', error);
+  }
+}
+
+async function handleAddToBook(book, forceDelete = false) {
+  const content = selectedFavContent.value;
+  console.log(content);
+  console.log(book);
+
+  try {
+    const result = await toggleFavorites({
       list_id: book.id,
       text: content.text,
       reading: content.reading,
       meaning: content.meaning,
       onyomi: content.onyomi,
       kunyomi: content.kunyomi,
-      examples: JSON.parse(JSON.stringify(content.examples || [])),  // JSON 방식으로 복사
-      breakdown: JSON.parse(JSON.stringify(content.breakdown || [])) // JSON 방식으로 복사
-    })
+      examples: JSON.parse(JSON.stringify(content.examples || [])),
+      breakdown: JSON.parse(JSON.stringify(content.breakdown || []))
+    });
 
-    console.log("이오")
+    if (result.message.includes('추가')) {
+      toast.success(
+          `<span style="color:#5869ff;">${content.text}</span>가 <span style="color:#5869ff;">${book.title}</span>에 추가되었습니다.`,
+          { dangerouslyHTMLString: true }
+      );
+    } else {
+      toast.error(
+          `<span style="color:#5869ff;">${content.text}</span>가 즐겨찾기에서 삭제되었습니다.`,
+          { dangerouslyHTMLString: true }
+      );
+    }
 
-    toast.success(
-        `<span style="color:#5869ff;">${content.text}</span>가 <span style="color:#5869ff;">${book.title}</span>에 저장되었습니다.`,
-        { dangerouslyHTMLString: true }
-    )
   } catch (err) {
-    toast.error('단어 저장 실패')
-    console.error('❌ 단어 저장 오류:', err)
+    toast.error('즐겨찾기 처리 중 오류가 발생했습니다.');
+    console.error('❌ 즐겨찾기 토글 오류:', err);
   }
-
-  showFavoriteSelectModal.value = false
+  await loadFavoriteWords();
+  showFavoriteSelectModal.value = false;
 }
-
 
 function closeFavModal() {
   showFavoriteSelectModal.value = false
@@ -423,10 +372,6 @@ async function handleSettingComplete() {
   sessionStorage.setItem('AiSettings', JSON.stringify(settings))
 
   setTimeout(() => {
-    handleAiMessage({ from: 'ai', text: `안녕! 나는 ${settings.name}이야. 반가워!`, avatar: '/악어.png', showTooltip: false })
-  }, 100)
-
-  setTimeout(() => {
     if (!languageMode.value) {
     handleAiMessage({
       from: 'ai',
@@ -437,10 +382,9 @@ async function handleSettingComplete() {
   }}, 500)
 
   if (res?.data?.data?.length) {
-    memoryList.value = res.data.data.map((m, i) => ({ id: i, summary: m.summary }))
     handleAiMessage({
       from: 'ai',
-      text: `다시 왔구나! 👋 이전에 이런 이야기들을 했었지?\n📝 ${memoryList.value.map(m => m.summary).slice(0, 3).join(' / ')}`,
+      text: `다시 왔구나! 와줘서 기뻐~ 👋 `,
       avatar: '/악어.png'
     })
   }
@@ -462,8 +406,6 @@ async function sendMessage() {
     if (languageMode.value) {
       try {
         await updateLanguageMode(languageMode.value)
-        localStorage.setItem('languageMode', languageMode.value)
-
         handleAiMessage({
           from: 'ai',
           text: '좋아요! 이제 일본어 공부를 시작해볼까요? ✨',
@@ -501,7 +443,7 @@ async function sendMessage() {
       const parsedArray = Array.isArray(parsed) ? parsed : [parsed]
 
       parsedArray.forEach((parsed) => {
-        let displayText = parsed.text // ← 여기서 text를 직접 대입
+        let displayText = parsed.text
 
         if (Array.isArray(parsed.words) && Array.isArray(parsed.translation)) {
           displayText = parsed.words.map((item, idx) => {
