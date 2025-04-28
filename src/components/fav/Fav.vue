@@ -53,7 +53,7 @@ import {
   getWordLists,
   createWordList,
   updateWordList,
-  deleteWordList
+  deleteWordList, getGrammarLists, createGrammarList, updateGrammarList, deleteGrammarList
 } from '@/api/fav'
 import router from "@/router/index.js";
 
@@ -62,8 +62,13 @@ const route = useRoute()
 const cardList = ref([])
 
 const goToDetail = (card) => {
-  router.push(`/word_favorites/${card.id}`)
+  if (route.path === '/word_favorites') {
+    router.push(`/word_favorites/${card.id}`)
+  } else if (route.path === '/grammar_favorites') {
+    router.push(`/grammar_favorites/${card.id}`)
+  }
 }
+
 
 const pageTitle = computed(() => {
   if (route.path === '/word_favorites') return '내 단어장'
@@ -86,15 +91,27 @@ const fetchLists = async () => {
       preview: '미리보기 없음',
       editing: false
     }))
+  } else if (route.path === '/grammar_favorites') {
+    const lists = await getGrammarLists()
+    cardList.value = lists.map(list => ({
+      ...list,
+      label: list.title,
+      preview: '미리보기 없음',
+      editing: false
+    }))
   }
 }
 
 const addCard = async () => {
   const color = randomColor()
-  const newList = await createWordList({
-    title: '새 단어장',
-    color
-  })
+  let newList
+
+  if (route.path === '/word_favorites') {
+    newList = await createWordList({ title: '새 단어장', color })
+  } else if (route.path === '/grammar_favorites') {
+    newList = await createGrammarList({ title: '새 문법장', color })
+  }
+
   cardList.value.push({
     ...newList,
     label: newList.title,
@@ -103,21 +120,35 @@ const addCard = async () => {
   })
 }
 
+
 const stopEditing = async (card) => {
   card.editing = false
-  await updateWordList(card.id, { title: card.label, color: card.color })
+
+  if (route.path === '/word_favorites') {
+    await updateWordList(card.id, { title: card.label, color: card.color })
+  } else if (route.path === '/grammar_favorites') {
+    await updateGrammarList(card.id, { title: card.label, color: card.color })
+  }
 }
+
 
 const confirmDelete = async (card) => {
   if (confirm('정말 삭제하시겠습니까?')) {
-    await deleteWordList(card.id)
+    if (route.path === '/word_favorites') {
+      await deleteWordList(card.id)
+    } else if (route.path === '/grammar_favorites') {
+      await deleteGrammarList(card.id)
+    }
+
     toast.error(
         `<span style="color:#5869ff;">${card.label}</span>(이)가 즐겨찾기에서 삭제되었습니다.`,
         { dangerouslyHTMLString: true }
     )
+
     cardList.value = cardList.value.filter(c => c.id !== card.id)
   }
 }
+
 
 const startEditing = (card) => {
   card.editing = true

@@ -3,10 +3,11 @@ import Login from '../view/Login.vue';
 import Chat from '../view/Chat.vue';
 import Fav from "@/components/fav/Fav.vue";
 import WordQuiz from "@/view/quiz/WordQuiz.vue";
-import DetailFav from "@/components/fav/DetailFav.vue";
+import WordDetailFav from "@/components/fav/WordDetailFav.vue";
 import QuizResult from "@/components/result/QuizResult.vue";
 import Aimemory from "@/components/ai/Aimemory.vue";
 import JpnChobo from "@/components/study/JpnChobo.vue";
+import GrammarDetailFav from "@/components/fav/GrammarDetailFav.vue";
 
 const routes = [
     {
@@ -37,12 +38,17 @@ const routes = [
     {
         path: '/word_favorites/:id',
         name: 'WordFavoritesDetail',
-        component: DetailFav
+        component: WordDetailFav
     },
     {
         path: '/word_quiz',
         name: 'Quiz_word',
         component: WordQuiz
+    },
+    {
+        path: '/grammar_favorites/:id',
+        name: 'GrammarFavoritesDetail',
+        component: GrammarDetailFav
     },
     {
         path: '/quiz_result',

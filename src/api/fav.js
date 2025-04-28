@@ -1,5 +1,31 @@
 import API from './client'
 
+export const getGrammarLists = async () => {
+    const res = await API.get('/favorites/grammar-lists')
+    return res.data
+}
+
+export const createGrammarList = async ({ title, color }) => {
+    const res = await API.post('/favorites/grammar-lists', { title, color })
+    return res.data
+}
+
+export const updateGrammarList = async (id, { title, color }) => {
+    const res = await API.put(`/favorites/grammar-lists/${id}`, { title, color })
+    return res.data
+}
+
+export const deleteGrammarList = async (id) => {
+    const res = await API.delete(`/favorites/grammar-lists/${id}`)
+    return res.data
+}
+
+export const getGrammarsByList = async (listId) => {
+    const res = await API.get(`/favorites/grammars/${listId}`)
+    return res.data
+}
+
+
 export const getWordLists = async () => {
     const res = await API.get('/favorites/lists')
     return res.data
