@@ -69,7 +69,6 @@ const goToDetail = (card) => {
   }
 }
 
-
 const pageTitle = computed(() => {
   if (route.path === '/word_favorites') return '내 단어장'
   if (route.path === '/grammar_favorites') return '문법 즐겨찾기'

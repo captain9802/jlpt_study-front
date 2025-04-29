@@ -73,14 +73,10 @@
                       <li v-for="(g, gi) in msg.explanation.grammar" :key="gi">
                         <div class="tooltip-title">
                           {{ g.text }}: {{ g.meaning }}
-                          <button @click="() => {
-                            const isAdding = !msg.grammarFavorites?.[g.text]
-                            toggleGrammarFavorite(index, g.text)
-                            AddFavContent('grammar', g.text, isAdding)
-                          }">
+                          <button @click="handleGrammarFavoriteClick(g)">
                             <Icon
-                                :icon="msg.grammarFavorites?.[g.text] ? 'mdi:star' : 'mdi:star-outline'"
-                                :color="msg.grammarFavorites?.[g.text] ? '#FFD700' : '#ccc'"
+                                :icon="isGrammarFavorite(g) ? 'mdi:star' : 'mdi:star-outline'"
+                                :color="isGrammarFavorite(g) ? '#FFD700' : '#ccc'"
                                 width="18"
                                 height="18"
                             />
@@ -165,15 +161,21 @@
   </div>
 </template>
 
-
 <script setup>
 import { Icon } from '@iconify/vue'
-import {ref, nextTick, onMounted, watch, computed} from 'vue'
+import {ref, nextTick, onMounted, watch, computed, toRaw} from 'vue'
 import Aiset from '@/components/ai/Aiset.vue'
 import { toast } from 'vue3-toastify'
 import AddFav from "@/components/fav/AddFav.vue"
 import {sendChat, getMemories, updateLanguageMode, fetchTooltipInfo } from '@/api/chat'
-import {getFavoriteWords, getWordLists, toggleFavorites} from "@/api/fav.js";
+import {
+  getFavoriteWords,
+  getGrammarLists,
+  getGrammarTexts,
+  getWordLists,
+  toggleFavorites,
+  toggleGrammarFavorites
+} from "@/api/fav.js";
 const loadingTooltips = ref({})
 const showSetting = ref(false)
 const message = ref('')
@@ -186,14 +188,68 @@ let res = null
 const userInput = ref('')
 const maxLength = 200
 const favoriteWords = ref([])
+const grammarTexts = ref([])
+const grammarLists = ref([])
+
+const userWordbooks = ref([])
+
+const selectedFavType = ref(null)
+const selectedFavContent = ref(null)
+const showFavoriteSelectModal = ref(false)
+
+watch(selectedFavType, (type) => {
+  if (type === 'word') {
+    userWordbooks.value = res.value
+  } else if (type === 'grammar') {
+    userWordbooks.value = grammarLists.value
+  } else {
+    userWordbooks.value = []
+  }
+})
 
 onMounted(async () => {
   await loadFavoriteWords()
+  await loadFavoriteGrammar()
 })
+
+function isGrammarFavorite(grammar) {
+  const normalize = (str) => str.replace(/^〜/, '').trim();
+  const normalizedText = normalize(toRaw(grammar).text);
+
+  return [...favoriteGrammarSet.value].some(item => normalize(item) === normalizedText);
+}
+
+
+
+const favoriteGrammarSet = computed(() => {
+  const set = new Set();
+
+  for (const grammar of grammarTexts.value) {
+    set.add(grammar);
+  }
+
+  return set;
+});
+
+const handleGrammarFavoriteClick = (grammar) => {
+  const raw = toRaw(grammar)
+
+  if (isGrammarFavorite(grammar)) {
+    selectedFavContent.value = {
+      type: 'grammar',
+      ...raw
+    };
+    handleAddToBook({ id: raw.list_id, title: '' }, true);
+  } else {
+    AddFavContent('grammar', {
+      text: raw.text,
+      meaning: raw.meaning
+    }, true);
+  }
+}
 
 const handleWordFavoriteClick = (word) => {
   const isFavorited = isFavorite(word);
-  console.log(isFavorited);
   if (isFavorited) {
     selectedFavContent.value = word;
     handleAddToBook({ id: word.list_id, title: '' }, true);
@@ -260,15 +316,22 @@ function checkLength() {
   }
 }
 
+onMounted(() => {
+  const stored = localStorage.getItem('ai-messages')
+  if (stored) {
+    messages.value = JSON.parse(stored)
+  }
+})
+
+
 function handleAiMessage(message) {
   messages.value.push(message)
+  saveMessagesToStorage()
 }
 
-const userWordbooks = ref([])
-
-const selectedFavType = ref(null)
-const selectedFavContent = ref(null)
-const showFavoriteSelectModal = ref(false)
+function saveMessagesToStorage() {
+  localStorage.setItem('ai-messages', JSON.stringify(messages.value))
+}
 
 onMounted(async () => {
   res = await getMemories()
@@ -282,6 +345,8 @@ onMounted(async () => {
 
 onMounted(async () => {
   res = await getWordLists()
+  grammarLists.value = await getGrammarLists()
+
   userWordbooks.value = res
 })
 
@@ -302,8 +367,21 @@ function highlightFavorites(text, msg) {
 
 function AddFavContent(type, content, isAdding) {
   selectedFavType.value = type
-  selectedFavContent.value = content
+  selectedFavContent.value = {
+    type,
+    ...content
+  }
   showFavoriteSelectModal.value = true
+}
+
+const loadFavoriteGrammar = async () => {
+  try {
+    const data = await getGrammarTexts()
+    grammarTexts.value = data
+    console.log("문법 불러오기 완료")
+  } catch (error) {
+    console.error('즐겨찾기 문법 불러오기 실패:', error);
+  }
 }
 
 async function loadFavoriteWords() {
@@ -317,40 +395,64 @@ async function loadFavoriteWords() {
 
 async function handleAddToBook(book, forceDelete = false) {
   const content = selectedFavContent.value;
+  const type = content.type || 'word';
   console.log(content);
   console.log(book);
 
   try {
-    const result = await toggleFavorites({
-      list_id: book.id,
-      text: content.text,
-      reading: content.reading,
-      meaning: content.meaning,
-      onyomi: content.onyomi,
-      kunyomi: content.kunyomi,
-      examples: JSON.parse(JSON.stringify(content.examples || [])),
-      breakdown: JSON.parse(JSON.stringify(content.breakdown || []))
-    });
+    let result;
 
-    if (result.message.includes('추가')) {
-      toast.success(
-          `<span style="color:#5869ff;">${content.text}</span>가 <span style="color:#5869ff;">${book.title}</span>에 추가되었습니다.`,
-          { dangerouslyHTMLString: true }
-      );
+    if (type === 'word') {
+      result = await toggleFavorites({
+        list_id: book.id,
+        text: content.text,
+        reading: content.reading,
+        meaning: content.meaning,
+        onyomi: content.onyomi,
+        kunyomi: content.kunyomi,
+        examples: JSON.parse(JSON.stringify(content.examples || [])),
+        breakdown: JSON.parse(JSON.stringify(content.breakdown || []))
+      });
+    }
+
+    else if (type === 'grammar') {
+      result = await toggleGrammarFavorites({
+        list_id: book.id,
+        grammar: content.grammar || content.text,    // text 대신 grammar가 없으면 text
+        meaning: content.meaning
+      });
+    }
+
+    // else if (type === 'sentence') {
+    //   result = await toggleSentenceFavorites({
+    //     list_id: book.id,
+    //     text: content.text,
+    //     meaning: content.meaning,
+    //     examples: JSON.parse(JSON.stringify(content.examples || []))
+    //   });
+    // }
+
+    const label = `<span style="color:#5869ff;">${content.text}</span>`;
+    const list = `<span style="color:#5869ff;">${book.title}</span>`;
+
+    if (result?.message?.includes('추가')) {
+      toast.success(`${label}가 ${list}에 추가되었습니다.`, { dangerouslyHTMLString: true });
     } else {
-      toast.error(
-          `<span style="color:#5869ff;">${content.text}</span>가 즐겨찾기에서 삭제되었습니다.`,
-          { dangerouslyHTMLString: true }
-      );
+      toast.error(`${label}가 즐겨찾기에서 삭제되었습니다.`, { dangerouslyHTMLString: true });
     }
 
   } catch (err) {
     toast.error('즐겨찾기 처리 중 오류가 발생했습니다.');
     console.error('❌ 즐겨찾기 토글 오류:', err);
   }
-  await loadFavoriteWords();
+
+  if (type === 'word') await loadFavoriteWords();
+  else if (type === 'grammar') await loadFavoriteGrammar();
+  // else if (type === 'sentence') await loadFavoriteSentences();
+
   showFavoriteSelectModal.value = false;
 }
+
 
 function closeFavModal() {
   showFavoriteSelectModal.value = false
@@ -381,7 +483,7 @@ async function handleSettingComplete() {
     })
   }}, 500)
 
-  if (res?.data?.data?.length) {
+  if (res?.data?.data?.length && !localStorage.getItem('ai-messages')) {
     handleAiMessage({
       from: 'ai',
       text: `다시 왔구나! 와줘서 기뻐~ 👋 `,

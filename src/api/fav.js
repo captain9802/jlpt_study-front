@@ -25,6 +25,18 @@ export const getGrammarsByList = async (listId) => {
     return res.data
 }
 
+export const getGrammarTexts = async () => {
+    const res = await API.get('/favorites/grammars')
+    return res.data
+}
+
+export const toggleGrammarFavorites = async (data) => {
+    console.log(data)
+    const res = await API.post('/favorites/grammars/toggle', data, {
+        headers: { 'Content-Type': 'application/json' }
+    });
+    return res.data;
+}
 
 export const getWordLists = async () => {
     const res = await API.get('/favorites/lists')
