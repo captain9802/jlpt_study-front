@@ -8,6 +8,7 @@ import QuizResult from "@/components/result/QuizResult.vue";
 import Aimemory from "@/components/ai/Aimemory.vue";
 import JpnChobo from "@/components/study/JpnChobo.vue";
 import GrammarDetailFav from "@/components/fav/GrammarDetailFav.vue";
+import SentenceDetailFav from "@/components/fav/SentenceDetailFav.vue";
 
 const routes = [
     {
@@ -49,6 +50,11 @@ const routes = [
         path: '/grammar_favorites/:id',
         name: 'GrammarFavoritesDetail',
         component: GrammarDetailFav
+    },
+    {
+        path: '/sentence_favorites/:id',
+        name: 'SentenceFavoritesDetail',
+        component: SentenceDetailFav
     },
     {
         path: '/quiz_result',

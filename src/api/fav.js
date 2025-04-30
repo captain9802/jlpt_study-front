@@ -1,5 +1,42 @@
 import API from './client'
 
+export const getSentenceLists = async () => {
+    const res = await API.get('/favorites/sentence-lists')
+    return res.data
+}
+
+export const createSentenceList = async ({ title, color }) => {
+    const res = await API.post('/favorites/sentence-lists', { title, color })
+    return res.data
+}
+
+export const updateSentenceList = async (id, { title, color }) => {
+    const res = await API.put(`/favorites/sentence-lists/${id}`, { title, color })
+    return res.data
+}
+
+export const deleteSentenceList = async (id) => {
+    const res = await API.delete(`/favorites/sentence-lists/${id}`)
+    return res.data
+}
+
+export const getSentencesByList = async (listId) => {
+    const res = await API.get(`/favorites/sentences/${listId}`)
+    return res.data
+}
+
+export const getSentenceTexts = async () => {
+    const res = await API.get('/favorites/sentences')
+    return res.data
+}
+
+export const toggleSentenceFavorites = async (data) => {
+    const res = await API.post('/favorites/sentences/toggle', data, {
+        headers: { 'Content-Type': 'application/json' }
+    });
+    return res.data;
+}
+
 export const getGrammarLists = async () => {
     const res = await API.get('/favorites/grammar-lists')
     return res.data
@@ -31,7 +68,6 @@ export const getGrammarTexts = async () => {
 }
 
 export const toggleGrammarFavorites = async (data) => {
-    console.log(data)
     const res = await API.post('/favorites/grammars/toggle', data, {
         headers: { 'Content-Type': 'application/json' }
     });

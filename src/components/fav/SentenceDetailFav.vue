@@ -21,25 +21,6 @@
           </label>
         </div>
       </div>
-
-      <div class="dialog-section">
-        <p>문제 언어</p>
-        <div class="radio-group three-columns">
-          <label>
-            <input type="radio" value="jp-ko" v-model="quizSettings.direction" />
-            <span>일 → 한</span>
-          </label>
-          <label>
-            <input type="radio" value="ko-jp" v-model="quizSettings.direction" />
-            <span>한 → 일</span>
-          </label>
-          <label>
-            <input type="radio" value="random" v-model="quizSettings.direction" />
-            <span>무작위</span>
-          </label>
-        </div>
-      </div>
-
       <div class="dialog-actions">
         <button @click="closeDialog">취소하기</button>
         <button class="start-btn" @click="startQuiz">시작하기</button>
@@ -48,28 +29,34 @@
 
     <div class="word-list">
       <div
-          v-for="(item, i) in grammarList"
+          v-for="(item, i) in sentenceList"
           :key="i"
           class="word-item"
       >
         <div class="word-header">
-          <span class="word-text">{{ item.grammar }}</span>
-          <button class="tts-btn" @click="speak(item.grammar)">
+          <span class="word-text">{{ item.text }}</span>
+          <button class="tts-btn" @click="speak(item.text)">
             <Icon icon="mdi:volume-high" width="20" />
           </button>
         </div>
         <div class="word-info">
-          <div class="word-meaning">뜻: {{ item.meaning }}</div>
+          <div class="word-meaning">뜻: {{ item.translation }}</div>
         </div>
         <button class="detail-btn" @click="item.showDetail = !item.showDetail">
           {{ item.showDetail ? '[간단히 보기]' : '[자세히 보기]' }}
         </button>
 
-        <div v-if="item.showDetail && item.examples?.length" class="word-example">
-          <strong>예시 문장:</strong>
+        <div v-if="item.showDetail" class="word-example">
+          <strong>단어:</strong>
           <ul>
-            <li v-for="(ex, j) in item.examples" :key="j">
-              {{ ex.ja }} — {{ ex.ko }}
+            <li v-for="(w, idx) in item.words" :key="'w-' + idx">
+              {{ w.text }} ({{w.reading}}) – {{ w.meaning }}
+            </li>
+          </ul>
+          <strong class="grammar">문법:</strong>
+          <ul>
+            <li v-for="(g, idx) in item.grammar" :key="'g-' + idx">
+              {{ g.text }} – {{ g.meaning }}
             </li>
           </ul>
         </div>
@@ -82,25 +69,22 @@
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import { getGrammarsByList } from '@/api/fav.js'
+import { getSentencesByList } from '@/api/fav.js'
 
 const route = useRoute()
 const listId = route.params.id
-const folderName = route.params.name || '문법장'
+const folderName = route.params.name || '문장'
 
-const grammarList = ref([])
+const sentenceList = ref([])
 
 onMounted(async () => {
-  const fetched = await getGrammarsByList(listId)
-  grammarList.value = fetched.map(grammar => ({
-    ...grammar,
+  const fetched = await getSentencesByList(listId)
+  console.log(fetched);
+  sentenceList.value = fetched.map(item => ({
+    ...item,
     showDetail: false
   }))
 })
-
-const toggleDetail = (index) => {
-  grammarList.value[index].showDetail = !grammarList.value[index].showDetail
-}
 
 const speak = (text) => {
   const utterance = new SpeechSynthesisUtterance(text)
@@ -125,6 +109,7 @@ const closeDialog = () => {
 const startQuiz = () => {
   dialogRef.value?.close()
   console.log('퀴즈 설정:', quizSettings.value)
+  // TODO: 퀴즈 시작 라우터 이동 처리 등 추가 구현 가능
 }
 </script>
 
@@ -233,7 +218,7 @@ const startQuiz = () => {
   grid-template-columns: repeat(2, 1fr);
 }
 
-.radio-group.three-columns {
+.radio-group {
   grid-template-columns: repeat(3, 1fr);
 }
 
@@ -332,6 +317,11 @@ const startQuiz = () => {
 .word-example ul {
   margin: 0.25rem 0 0 1rem;
   padding: 0;
+}
+
+.grammar {
+  margin-top: 0.75rem;
+  display: block;
 }
 
 @keyframes fadeIn {

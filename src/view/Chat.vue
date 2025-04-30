@@ -44,16 +44,14 @@
                           }
                         }"
                     />
+
                     <Icon
-                        :icon="msg.favorite ? 'mdi:star' : 'mdi:star-outline'"
-                        :color="msg.favorite ? '#FFD700' : '#ccc'"
+                        :icon="isSentenceFavorite(msg) ? 'mdi:star' : 'mdi:star-outline'"
+                        :color="isSentenceFavorite(msg) ? '#FFD700' : '#ccc'"
                         width="24"
                         height="24"
-                        @click="() => {
-                        const isAdding = !msg.favorite
-                        toggleFavorite(index)
-                        AddFavContent('sentence', msg, isAdding)
-                        }"
+                        @click="handleSentenceFavoriteClick(msg)"
+                        style="cursor: pointer;"
                     />
                     <Icon icon="mdi:volume-high" class="icon" color="#ccc" width="24" height="24" />
                     <Icon
@@ -171,10 +169,10 @@ import {sendChat, getMemories, updateLanguageMode, fetchTooltipInfo } from '@/ap
 import {
   getFavoriteWords,
   getGrammarLists,
-  getGrammarTexts,
+  getGrammarTexts, getSentenceLists, getSentenceTexts,
   getWordLists,
   toggleFavorites,
-  toggleGrammarFavorites
+  toggleGrammarFavorites, toggleSentenceFavorites
 } from "@/api/fav.js";
 const loadingTooltips = ref({})
 const showSetting = ref(false)
@@ -190,7 +188,7 @@ const maxLength = 200
 const favoriteWords = ref([])
 const grammarTexts = ref([])
 const grammarLists = ref([])
-
+const sentenceTexts = ref([])
 const userWordbooks = ref([])
 
 const selectedFavType = ref(null)
@@ -210,7 +208,20 @@ watch(selectedFavType, (type) => {
 onMounted(async () => {
   await loadFavoriteWords()
   await loadFavoriteGrammar()
+  await loadFavoriteSentence()
 })
+
+function isSentenceFavorite(sentenceObj) {
+  const text = toRaw(sentenceObj)?.text;
+  if (typeof text !== 'string') return false;
+
+  const normalized = text.trim();
+  return favoriteSentenceSet.value.has(normalized);
+}
+
+const favoriteSentenceSet = computed(() => {
+  return new Set(sentenceTexts.value);
+});
 
 function isGrammarFavorite(grammar) {
   const normalize = (str) => str.replace(/^〜/, '').trim();
@@ -218,8 +229,6 @@ function isGrammarFavorite(grammar) {
 
   return [...favoriteGrammarSet.value].some(item => normalize(item) === normalizedText);
 }
-
-
 
 const favoriteGrammarSet = computed(() => {
   const set = new Set();
@@ -230,6 +239,24 @@ const favoriteGrammarSet = computed(() => {
 
   return set;
 });
+
+const handleSentenceFavoriteClick = (sentence) => {
+  const raw = toRaw(sentence)
+
+  if (isSentenceFavorite(sentence)) {
+    selectedFavContent.value = {
+      type: 'sentence',
+      ...raw
+    };
+    handleAddToBook({ id: raw.list_id, title: '' }, true);
+  } else {
+    AddFavContent('sentence', {
+      text: raw.text,
+      meaning: raw.explanation.translation
+    }, true);
+  }
+}
+
 
 const handleGrammarFavoriteClick = (grammar) => {
   const raw = toRaw(grammar)
@@ -346,6 +373,7 @@ onMounted(async () => {
 onMounted(async () => {
   res = await getWordLists()
   grammarLists.value = await getGrammarLists()
+  sentenceTexts.value = await getSentenceLists()
 
   userWordbooks.value = res
 })
@@ -373,6 +401,18 @@ function AddFavContent(type, content, isAdding) {
   }
   showFavoriteSelectModal.value = true
 }
+
+const loadFavoriteSentence = async () => {
+  try {
+    const data = await getSentenceTexts()
+    sentenceTexts.value = data
+    console.log(sentenceTexts.value);
+    console.log("문장 불러오기 완료")
+  } catch (error) {
+    console.error('즐겨찾기 문장 불러오기 실패:', error)
+  }
+}
+
 
 const loadFavoriteGrammar = async () => {
   try {
@@ -423,14 +463,15 @@ async function handleAddToBook(book, forceDelete = false) {
       });
     }
 
-    // else if (type === 'sentence') {
-    //   result = await toggleSentenceFavorites({
-    //     list_id: book.id,
-    //     text: content.text,
-    //     meaning: content.meaning,
-    //     examples: JSON.parse(JSON.stringify(content.examples || []))
-    //   });
-    // }
+    else if (type === 'sentence') {
+      result = await toggleSentenceFavorites({
+        list_id: book.id,
+        text: content.text,
+        meaning: content.meaning,
+        examples: JSON.parse(JSON.stringify(content.examples || []))
+      });
+      console.log(result);
+    }
 
     const label = `<span style="color:#5869ff;">${content.text}</span>`;
     const list = `<span style="color:#5869ff;">${book.title}</span>`;
@@ -448,7 +489,7 @@ async function handleAddToBook(book, forceDelete = false) {
 
   if (type === 'word') await loadFavoriteWords();
   else if (type === 'grammar') await loadFavoriteGrammar();
-  // else if (type === 'sentence') await loadFavoriteSentences();
+  else if (type === 'sentence') await loadFavoriteSentence();
 
   showFavoriteSelectModal.value = false;
 }

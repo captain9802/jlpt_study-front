@@ -53,7 +53,13 @@ import {
   getWordLists,
   createWordList,
   updateWordList,
-  deleteWordList, getGrammarLists, createGrammarList, updateGrammarList, deleteGrammarList
+  deleteWordList,
+  getGrammarLists,
+  createGrammarList,
+  updateGrammarList,
+  deleteGrammarList,
+  getSentenceLists,
+  createSentenceList, updateSentenceList, deleteSentenceList
 } from '@/api/fav'
 import router from "@/router/index.js";
 
@@ -66,6 +72,8 @@ const goToDetail = (card) => {
     router.push(`/word_favorites/${card.id}`)
   } else if (route.path === '/grammar_favorites') {
     router.push(`/grammar_favorites/${card.id}`)
+  } else if (route.path === '/sentence_favorites') {
+    router.push(`/sentence_favorites/${card.id}`)
   }
 }
 
@@ -98,6 +106,14 @@ const fetchLists = async () => {
       preview: '미리보기 없음',
       editing: false
     }))
+  } else if (route.path === '/sentence_favorites') {
+    const lists = await getSentenceLists()
+    cardList.value = lists.map(list => ({
+      ...list,
+      label: list.title,
+      preview: '미리보기 없음',
+      editing: false
+    }))
   }
 }
 
@@ -106,9 +122,11 @@ const addCard = async () => {
   let newList
 
   if (route.path === '/word_favorites') {
-    newList = await createWordList({ title: '새 단어장', color })
+    newList = await createWordList({ title: '새 단어집', color })
   } else if (route.path === '/grammar_favorites') {
-    newList = await createGrammarList({ title: '새 문법장', color })
+    newList = await createGrammarList({ title: '새 문법집', color })
+  } else if (route.path === '/sentence_favorites') {
+    newList = await createSentenceList({ title: '새 문장집', color })
   }
 
   cardList.value.push({
@@ -127,6 +145,8 @@ const stopEditing = async (card) => {
     await updateWordList(card.id, { title: card.label, color: card.color })
   } else if (route.path === '/grammar_favorites') {
     await updateGrammarList(card.id, { title: card.label, color: card.color })
+  } else if (route.path === '/sentence_favorites') {
+    await updateSentenceList(card.id, { title: card.label, color: card.color })
   }
 }
 
@@ -137,6 +157,8 @@ const confirmDelete = async (card) => {
       await deleteWordList(card.id)
     } else if (route.path === '/grammar_favorites') {
       await deleteGrammarList(card.id)
+    }  else if (route.path === '/sentence_favorites') {
+      await deleteSentenceList(card.id)
     }
 
     toast.error(
