@@ -11,7 +11,6 @@
         <div class="number">{{ correctAnswers.length }}개</div>
       </div>
     </div>
-
     <div class="expand-section">
       <div class="expand-container">
         <div :class="['expand-wrong', { open: wrongExpanded }]">
@@ -19,96 +18,45 @@
             <Icon
                 :icon="wrongExpanded ? 'mdi:chevron-down' : 'mdi:chevron-right'"
                 class="arrow-icon"
-            /> {{ wrongExpanded ? '오답 문제 접기' : '오답 문제 펼쳐보기' }}</div>
+            />
+            {{ wrongExpanded ? '오답 문제 접기' : '오답 문제 펼쳐보기' }}
+          </div>
           <div v-show="wrongExpanded" class="word-list">
-            <div
-                v-for="(word, i) in wrongAnswers"
-                :key="i"
-                class="word-item"
-            >
+            <div v-for="(word, i) in wrongAnswers" :key="i" class="word-item">
               <div class="word-header">
-                <span class="word-text">{{ word.text }}（{{ word.reading || 'よみ' }}）</span>
-                <button class="tts-btn" @click="speak(word.text)">
+                <span class="word-text">{{ word.ja }}</span>
+                <button class="tts-btn" @click="speak(word.ja)">
                   <Icon icon="mdi:volume-high" width="20" />
                 </button>
               </div>
-              <div class="word-info">
-                <div class="word-meaning">뜻: {{ word.meaning }}</div>
-                <div class="word-reading">
-                  음독: {{ word.onyomi || 'なし' }} / 훈독: {{ word.kunyomi || 'なし' }}
-                </div>
-              </div>
-              <button class="detail-btn" @click="toggleDetail(word)">
-                {{ word.showDetail ? '[간단히 보기]' : '[자세히 보기]' }}
-              </button>
-              <div v-if="word.showDetail">
-                <div v-if="word.examples?.length" class="word-example">
-                  <strong>예시:</strong>
-                  <ul>
-                    <li v-for="(ex, j) in word.examples" :key="j">{{ ex }}</li>
-                  </ul>
-                </div>
-                <div v-if="word.breakdown?.length" class="word-breakdown">
-                  <strong>한자 구성:</strong>
-                  <ul>
-                    <li v-for="(kanji, k) in word.breakdown" :key="k">
-                      {{ kanji.kanji }} - (음독: {{ kanji.onyomi }} / 훈독: {{ kanji.kunyomi }})
-                    </li>
-                  </ul>
-                </div>
-              </div>
+              <div class="word-info">뜻: {{ word.ko }}</div>
             </div>
           </div>
         </div>
-
         <div :class="['expand-correct', { open: correctExpanded }]">
           <div class="expand-header" @click="toggleCorrect">
             <Icon
                 :icon="correctExpanded ? 'mdi:chevron-down' : 'mdi:chevron-right'"
                 class="arrow-icon"
-            /> {{ correctExpanded ? '정답 문제 접기' : '정답 문제 펼쳐보기' }}</div>
+            />
+            {{ correctExpanded ? '정답 문제 접기' : '정답 문제 펼쳐보기' }}
+          </div>
           <div v-show="correctExpanded" class="word-list">
-            <div
-                v-for="(word, i) in correctAnswers"
-                :key="i"
-                class="word-item"
-            >
+            <div v-for="(word, i) in correctAnswers" :key="i" class="word-item">
               <div class="word-header">
-                <span class="word-text">{{ word.text }}（{{ word.reading || 'よみ' }}）</span>
-                <button class="tts-btn" @click="speak(word.text)">
+                <span class="word-text">{{ word.ja }}</span>
+                <button class="tts-btn" @click="speak(word.ja)">
                   <Icon icon="mdi:volume-high" width="20" />
                 </button>
               </div>
-              <div class="word-info">
-                <div class="word-meaning">뜻: {{ word.meaning }}</div>
-                <div class="word-reading">
-                  음독: {{ word.onyomi || 'なし' }} / 훈독: {{ word.kunyomi || 'なし' }}
-                </div>
-              </div>
-              <button class="detail-btn" @click="toggleDetail(word)">
-                {{ word.showDetail ? '[간단히 보기]' : '[자세히 보기]' }}
-              </button>
-              <div v-if="word.showDetail">
-                <div v-if="word.examples?.length" class="word-example">
-                  <strong>예시:</strong>
-                  <ul>
-                    <li v-for="(ex, j) in word.examples" :key="j">{{ ex }}</li>
-                  </ul>
-                </div>
-                <div v-if="word.breakdown?.length" class="word-breakdown">
-                  <strong>한자 구성:</strong>
-                  <ul>
-                    <li v-for="(kanji, k) in word.breakdown" :key="k">
-                      {{ kanji.kanji }} - (음독: {{ kanji.onyomi }} / 훈독: {{ kanji.kunyomi }})
-                    </li>
-                  </ul>
-                </div>
-              </div>
+              <div class="word-info">뜻: {{ word.ko }}</div>
             </div>
           </div>
         </div>
+
       </div>
     </div>
+
     <div class="action-buttons">
       <button class="retry-btn" @click="retryWrong">오답문제 풀기</button>
       <button class="back-btn" @click="goBack">즐겨찾기 목록</button>
@@ -116,70 +64,41 @@
   </div>
 </template>
 
+
 <script setup>
 import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
-import router from "@/router/index.js";
+import router from '@/router'
+import {getWordsByList} from "@/api/fav.js";
 
-const correctAnswers = ref([
-  {
-    text: '明日',
-    reading: 'あした',
-    meaning: '내일',
-    onyomi: 'メイニチ',
-    kunyomi: 'あした / あす',
-    examples: ['明日会いましょう – 내일 만나자'],
-    breakdown: [
-      { kanji: '明', onyomi: 'メイ', kunyomi: 'あか.るい' },
-      { kanji: '日', onyomi: 'ニチ', kunyomi: 'ひ' }
-    ],
-    showDetail: false
-  }
-])
+const correctAnswers = ref([])
+const wrongAnswers = ref([])
 
-const wrongAnswers = ref([
-  {
-    text: '勉強',
-    reading: 'べんきょう',
-    meaning: '공부',
-    onyomi: 'ベンキョウ',
-    kunyomi: '',
-    examples: ['毎日勉強します – 매일 공부합니다'],
-    breakdown: [
-      { kanji: '勉', onyomi: 'ベン', kunyomi: '' },
-      { kanji: '強', onyomi: 'キョウ', kunyomi: 'つよ.い' }
-    ],
-    showDetail: false
-  }
-])
+onMounted(() => {
+  const quizData = JSON.parse(sessionStorage.getItem('quizData') || '[]')
+  const answers = JSON.parse(sessionStorage.getItem('answers') || '[]')
 
-const retryWrong = () => {
-  const quizData = wrongAnswers.value.map((word) => ({
-    ...word,
-    answer: 0, // 기본값 (필요 시 조정)
-    options: [word.meaning, '가짜1', '가짜2', '가짜3'] // 예시 옵션
-  }))
-  const answers = []
+  quizData.forEach((question, index) => {
+    const user = answers[index] || {}
+    const selected = user.selectedIndex
 
-  sessionStorage.setItem('quizData', JSON.stringify(quizData))
-  sessionStorage.setItem('answers', JSON.stringify(answers))
+    const isCorrect = selected === question.answer
+    const target = isCorrect ? correctAnswers.value : wrongAnswers.value
 
-  router.push('/word_quiz')
-}
+    const answerOption = question.options[question.answer]
 
-const goBack = () => {
-  router.push('/word_favorites')
-}
+    const isKorean = /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(question.jp)
 
-const correctExpanded = ref(false)
-const wrongExpanded = ref(false)
+    const jpText = isKorean ? answerOption.text : question.jp
+    const koText = isKorean ? question.jp : answerOption.text
 
-const toggleCorrect = () => {
-  correctExpanded.value = !correctExpanded.value
-}
-const toggleWrong = () => {
-  wrongExpanded.value = !wrongExpanded.value
-}
+    target.push({
+      ja: jpText,
+      ko: koText
+    })
+  })
+  console.log(quizData);
+})
 
 const speak = (text) => {
   const utterance = new SpeechSynthesisUtterance(text)
@@ -187,24 +106,73 @@ const speak = (text) => {
   speechSynthesis.speak(utterance)
 }
 
-const toggleDetail = (word) => {
-  word.showDetail = !word.showDetail
+const retryWrong = async () => {
+  const listId = parseInt(sessionStorage.getItem('lastListId'))
+  if (!listId || isNaN(listId)) {
+    alert('리스트 정보가 없습니다.')
+    return
+  }
+
+  const allWords = await getWordsByList(listId)
+
+  const quizData = wrongAnswers.value.map((word) => {
+    const direction = Math.random() < 0.5 ? 'jp-ko' : 'ko-jp'
+
+    const questionText = direction === 'jp-ko' ? word.ja : word.ko
+    const correctText = direction === 'jp-ko' ? word.ko : word.ja
+
+    const correct = {
+      text: correctText,
+      translation: questionText
+    }
+
+    const wrongOptions = allWords
+        .filter(w => w.text !== word.ja && w.meaning !== word.ko)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3)
+        .map(opt => ({
+          text: direction === 'jp-ko' ? opt.meaning : opt.text,
+          translation: direction === 'jp-ko' ? opt.text : opt.meaning
+        }))
+
+    const options = [...wrongOptions, correct].sort(() => Math.random() - 0.5)
+    const answerIndex = options.findIndex(
+        opt => opt.text === correct.text && opt.translation === correct.translation
+    )
+
+    return {
+      jp: questionText,
+      options,
+      answer: answerIndex
+    }
+  })
+
+  const shuffled = quizData.sort(() => Math.random() - 0.5)
+  sessionStorage.setItem('quizData', JSON.stringify(shuffled))
+  sessionStorage.setItem('answers', JSON.stringify([]))
+  sessionStorage.setItem('lastListId', listId)
+  router.push('/word_quiz')
 }
 
-onMounted(() => {
-  const quizData = JSON.parse(sessionStorage.getItem('quizData') || '[]')
-  const answers = JSON.parse(sessionStorage.getItem('answers') || '[]')
 
-  quizData.forEach((word, index) => {
-    const user = answers[index] || {}
-    const selected = user.selectedIndex
 
-    const isCorrect = selected === word.answer
-    const target = isCorrect ? correctAnswers.value : wrongAnswers.value
+const goBack = () => {
+  sessionStorage.removeItem('quizData')
+  sessionStorage.removeItem('answers')
+  sessionStorage.removeItem('currentIndex')
+  router.push('/word_favorites')
+}
 
-    target.push({ ...word, showDetail: false })
-  })
-})
+
+const correctExpanded = ref(true)
+const wrongExpanded = ref(true)
+
+const toggleCorrect = () => {
+  correctExpanded.value = !correctExpanded.value
+}
+const toggleWrong = () => {
+  wrongExpanded.value = !wrongExpanded.value
+}
 </script>
 
 <style scoped>
@@ -330,12 +298,13 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.tts-btn,
-.fav-btn {
+.tts-btn {
   background: none;
   border: none;
   cursor: pointer;
   color: #3e3e3e;
+  display: flex;
+  align-items: center;
 }
 
 .word-info {

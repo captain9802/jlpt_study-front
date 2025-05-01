@@ -21,25 +21,6 @@
           </label>
         </div>
       </div>
-
-      <div class="dialog-section">
-        <p>문제 언어</p>
-        <div class="radio-group three-columns">
-          <label>
-            <input type="radio" value="jp-ko" v-model="quizSettings.direction" />
-            <span>일 → 한</span>
-          </label>
-          <label>
-            <input type="radio" value="ko-jp" v-model="quizSettings.direction" />
-            <span>한 → 일</span>
-          </label>
-          <label>
-            <input type="radio" value="random" v-model="quizSettings.direction" />
-            <span>무작위</span>
-          </label>
-        </div>
-      </div>
-
       <div class="dialog-actions">
         <button @click="closeDialog">취소하기</button>
         <button class="start-btn" @click="startQuiz">시작하기</button>
@@ -233,7 +214,7 @@ const startQuiz = () => {
   grid-template-columns: repeat(2, 1fr);
 }
 
-.radio-group.three-columns {
+.radio-group {
   grid-template-columns: repeat(3, 1fr);
 }
 
@@ -303,7 +284,7 @@ const startQuiz = () => {
   }
 
   .radio-group.two-columns,
-  .radio-group.three-columns {
+  .radio-group {
     grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   }
 

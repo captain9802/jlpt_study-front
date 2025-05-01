@@ -126,3 +126,12 @@ export const toggleFavorites = async (wordData) => {
     })
     return res.data
 }
+
+export const getWordQuiz = async ({ listId, order, direction }) => {
+    const res = await API.post('/quiz/word', {
+        list_id: listId,
+        order,
+        direction
+    })
+    return res.data
+}

@@ -1,5 +1,5 @@
 <template>
-  <div class="quiz-page">
+  <div class="quiz-page" v-if="currentQuestion">
     <div class="quiz-top">
       <div class="quiz-index">{{ currentIndex + 1 }} / {{ totalQuestions }}</div>
     </div>
@@ -19,23 +19,20 @@
       </div>
     </div>
 
-    <div class="quiz-options-section">
-      <div class="quiz-options">
-        <button
-            v-for="(option, i) in currentQuestion.options"
-            :key="i"
-            class="option-btn"
-            :class="optionClass(i)"
-            @click="selectOption(i)"
-            :disabled="isAnswered"
-        >
-          {{ option }}
-
-          <span v-if="isAnswered" class="translation">
-            ({{ getTranslation(currentQuestion.jp, option) }})
-          </span>
-        </button>
-      </div>
+    <div class="quiz-options">
+      <button
+          v-for="(option, i) in currentQuestion.options"
+          :key="i"
+          class="option-btn"
+          :class="optionClass(i)"
+          @click="selectOption(i)"
+          :disabled="isAnswered"
+      >
+        {{ option.text }}
+        <span v-if="isAnswered" class="translation">
+      ({{ option.translation }})
+    </span>
+      </button>
     </div>
 
     <div class="quiz-actions">
@@ -59,15 +56,23 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import {ref, computed, watch, onMounted} from 'vue'
 import { Icon } from '@iconify/vue'
 import router from "@/router/index.js";
+import {getWordQuiz} from "@/api/fav.js";
+import {useRoute} from "vue-router";
 
 const loadIndex = () => parseInt(sessionStorage.getItem('currentIndex')) || 0
 const loadAnswers = () => JSON.parse(sessionStorage.getItem('answers') || '[]')
 
-const currentIndex = ref(loadIndex())
-const answers = ref(loadAnswers())
+const currentIndex = ref(0)
+const answers = ref([])
+const route = useRoute()
+const quizData = ref([])
+
+const listId = route.query.listId
+const order = route.query.order || 'default'
+const direction = route.query.direction || 'jp-ko'
 
 watch(currentIndex, (val) => {
   sessionStorage.setItem('currentIndex', val)
@@ -76,6 +81,39 @@ watch(currentIndex, (val) => {
 watch(answers, (val) => {
   sessionStorage.setItem('answers', JSON.stringify(val))
 }, { deep: true })
+
+onMounted(async () => {
+  const cachedQuiz = sessionStorage.getItem('quizData')
+  const cachedAnswers = sessionStorage.getItem('answers')
+
+  if (cachedQuiz) {
+    quizData.value = JSON.parse(cachedQuiz)
+    if (currentIndex.value >= quizData.value.length) {
+      currentIndex.value = 0
+      sessionStorage.setItem('currentIndex', '0') // 같이 초기화
+    }
+
+    if (cachedAnswers) {
+      answers.value = JSON.parse(cachedAnswers)
+    } else {
+      answers.value = Array(quizData.value.length).fill(null)
+    }
+    return
+  }
+
+  console.log('[❌ quizData 없음, API 호출 예정]')
+  const { listId, order, direction } = route.query
+  const data = await getWordQuiz({ listId, order, direction })
+  quizData.value = data
+  answers.value = Array(data.length).fill(null)
+})
+
+
+
+
+const currentQuestion = computed(() =>
+    quizData.value.length > currentIndex.value ? quizData.value[currentIndex.value] : null
+)
 
 const selectedIndex = computed({
   get: () => answers.value[currentIndex.value]?.selectedIndex ?? null,
@@ -97,31 +135,30 @@ const markedUnknown = computed({
   }
 })
 
-const quizData = [
-  {
-    jp: 'こんにちは',
-    options: ['안녕하세요', '감사합니다', '잘 자요', '죄송합니다'],
-    answer: 0
-  },
-  {
-    jp: 'ありがとう',
-    options: ['잘 가요', '감사합니다', '오랜만이에요', '괜찮아요'],
-    answer: 1
-  },
-]
-
-const totalQuestions = quizData.length
-const currentQuestion = computed(() => quizData[currentIndex.value])
-const isAnswered = computed(() => selectedIndex.value !== null || markedUnknown.value)
+const totalQuestions = computed(() =>
+    quizData.value.length
+)
+const isAnswered = computed(() => {
+  const ans = answers.value[currentIndex.value]
+  return ans && (ans.selectedIndex !== undefined || ans.markedUnknown === true)
+})
 
 const selectOption = (index) => {
   if (!isAnswered.value) {
-    selectedIndex.value = index
+    answers.value[currentIndex.value] = {
+      ...(answers.value[currentIndex.value] || {}),
+      selectedIndex: index
+    }
   }
 }
 
 const markAsUnknown = () => {
-  markedUnknown.value = true
+  if (!isAnswered.value) {
+    answers.value[currentIndex.value] = {
+      ...(answers.value[currentIndex.value] || {}),
+      markedUnknown: true
+    }
+  }
 }
 
 const optionClass = (i) => {
@@ -132,16 +169,21 @@ const optionClass = (i) => {
 }
 
 const goToNext = () => {
-  if (currentIndex.value < quizData.length - 1) {
+  if (
+      quizData.value.length > 0 &&
+      currentIndex.value < quizData.value.length - 1 &&
+      isAnswered.value
+  ) {
     currentIndex.value++
   }
 }
 
 const goToPrev = () => {
-  if (currentIndex.value > 0) {
+  if (quizData.value.length > 0 && currentIndex.value > 0) {
     currentIndex.value--
   }
 }
+
 
 const speak = (text) => {
   const utterance = new SpeechSynthesisUtterance(text)
@@ -149,16 +191,16 @@ const speak = (text) => {
   speechSynthesis.speak(utterance)
 }
 
-const getTranslation = (jpText, optionText) => {
-  const isKorean = /[ㄱ-힝]/.test(optionText)
-  return isKorean ? jpText : currentQuestion.value.options[currentQuestion.value.answer]
+const submitQuiz = () => {
+  try {
+    sessionStorage.setItem('quizData', JSON.stringify(quizData.value))
+    sessionStorage.setItem('answers', JSON.stringify(answers.value))
+    router.push('/quiz_result')
+  } catch (e) {
+    console.error('❌ 퀴즈 제출 중 오류:', e)
+  }
 }
 
-const submitQuiz = () => {
-  sessionStorage.setItem('quizData', JSON.stringify(quizData))
-  sessionStorage.setItem('answers', JSON.stringify(answers.value))
-  router.push('/quiz_result')
-}
 </script>
 
 <style scoped>

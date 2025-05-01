@@ -87,13 +87,12 @@
   </div>
 </template>
 
-
-
 <script setup>
 import {onMounted, ref} from 'vue'
 import { Icon } from '@iconify/vue'
 import { useRoute } from 'vue-router'
 import {getWordsByList} from "@/api/fav.js";
+import router from "@/router/index.js";
 
 const route = useRoute()
 const listId = route.params.id
@@ -125,8 +124,18 @@ const closeDialog = () => {
 }
 const startQuiz = () => {
   dialogRef.value?.close()
-  console.log('퀴즈 설정:', quizSettings.value)
+  const { order, direction } = quizSettings.value
+  sessionStorage.setItem('lastListId', listId)
+  router.push({
+    name: 'Quiz_word',
+    query: {
+      listId,
+      order: quizSettings.value.order,
+      direction: quizSettings.value.direction,
+    }
+  })
 }
+
 
 const toggleDetail = (index) => {
   wordList.value[index].showDetail = !wordList.value[index].showDetail
