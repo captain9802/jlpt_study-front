@@ -136,7 +136,6 @@ const startQuiz = () => {
   })
 }
 
-
 const toggleDetail = (index) => {
   wordList.value[index].showDetail = !wordList.value[index].showDetail
 }

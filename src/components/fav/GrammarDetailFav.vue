@@ -6,7 +6,6 @@
         <Icon icon="mdi:playlist-plus" width="22" /> 퀴즈 작성
       </button>
     </div>
-
     <dialog ref="dialogRef" class="quiz-dialog">
       <div class="dialog-section">
         <p>문제 순서</p>
@@ -64,6 +63,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { getGrammarsByList } from '@/api/fav.js'
+import router from "@/router/index.js";
 
 const route = useRoute()
 const listId = route.params.id
@@ -105,8 +105,20 @@ const closeDialog = () => {
 
 const startQuiz = () => {
   dialogRef.value?.close()
-  console.log('퀴즈 설정:', quizSettings.value)
+  sessionStorage.setItem('lastListId', listId)
+  sessionStorage.removeItem('quizData')
+  sessionStorage.removeItem('answers')
+  sessionStorage.removeItem('currentIndex')
+
+  router.push({
+    name: 'Quiz_grammar',
+    query: {
+      listId,
+      order: quizSettings.value.order
+    }
+  })
 }
+
 </script>
 
 

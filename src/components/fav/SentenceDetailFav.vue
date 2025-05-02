@@ -70,6 +70,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { getSentencesByList } from '@/api/fav.js'
+import router from "@/router/index.js";
 
 const route = useRoute()
 const listId = route.params.id
@@ -108,9 +109,18 @@ const closeDialog = () => {
 
 const startQuiz = () => {
   dialogRef.value?.close()
-  console.log('퀴즈 설정:', quizSettings.value)
-  // TODO: 퀴즈 시작 라우터 이동 처리 등 추가 구현 가능
+
+  const { order } = quizSettings.value
+
+  router.push({
+    path: '/sentence_quiz',
+    query: {
+      listId,
+      order
+    }
+  })
 }
+
 </script>
 
 

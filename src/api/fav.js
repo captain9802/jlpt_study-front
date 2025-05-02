@@ -37,6 +37,14 @@ export const toggleSentenceFavorites = async (data) => {
     return res.data;
 }
 
+export const getSentenceQuiz = async ({ listId, order }) => {
+    const res = await API.post('/quiz/sentence', {
+        list_id: listId,
+        order
+    })
+    return res.data
+}
+
 export const getGrammarLists = async () => {
     const res = await API.get('/favorites/grammar-lists')
     return res.data
@@ -72,6 +80,14 @@ export const toggleGrammarFavorites = async (data) => {
         headers: { 'Content-Type': 'application/json' }
     });
     return res.data;
+}
+
+export const getGrammarQuiz = async ({ listId, order }) => {
+    const res = await API.post('/quiz/grammar', {
+        list_id: listId,
+        order
+    })
+    return res.data
 }
 
 export const getWordLists = async () => {

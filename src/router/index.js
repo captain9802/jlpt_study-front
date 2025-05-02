@@ -4,11 +4,14 @@ import Chat from '../view/Chat.vue';
 import Fav from "@/components/fav/Fav.vue";
 import WordQuiz from "@/view/quiz/WordQuiz.vue";
 import WordDetailFav from "@/components/fav/WordDetailFav.vue";
-import QuizResult from "@/components/result/QuizResult.vue";
+import QuizWordResult from "@/components/result/QuizWordResult.vue";
 import Aimemory from "@/components/ai/Aimemory.vue";
 import JpnChobo from "@/components/study/JpnChobo.vue";
 import GrammarDetailFav from "@/components/fav/GrammarDetailFav.vue";
 import SentenceDetailFav from "@/components/fav/SentenceDetailFav.vue";
+import GrammarQuiz from "@/view/quiz/GrammarQuiz.vue";
+import QuizGrammarResult from "@/components/result/QuizGrammarResult.vue";
+import SentenceQuiz from "@/view/quiz/SentenceQuiz.vue";
 
 const routes = [
     {
@@ -47,6 +50,16 @@ const routes = [
         component: WordQuiz
     },
     {
+        path: '/grammar_quiz',
+        name: 'Quiz_grammar',
+        component: GrammarQuiz
+    },
+    {
+        path: '/sentence_quiz',
+        name: 'Quiz_sentence',
+        component: SentenceQuiz
+    },
+    {
         path: '/grammar_favorites/:id',
         name: 'GrammarFavoritesDetail',
         component: GrammarDetailFav
@@ -57,9 +70,14 @@ const routes = [
         component: SentenceDetailFav
     },
     {
-        path: '/quiz_result',
-        name: 'QuizResult',
-        component: QuizResult
+        path: '/word-quiz_result',
+        name: 'WordQuizResult',
+        component: QuizWordResult
+    },
+    {
+        path: '/Grammar-quiz_result',
+        name: 'GrammarQuizResult',
+        component: QuizGrammarResult
     },
     {
         path: '/chat_memory',
