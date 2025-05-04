@@ -37,6 +37,16 @@
           <button class="tts-btn" @click="speak(item.grammar)">
             <Icon icon="mdi:volume-high" width="20" />
           </button>
+          <button class="fav-btn">
+            <Icon
+                :icon="isGrammarFavorite(item) ? 'mdi:star' : 'mdi:star-outline'"
+                :color="isGrammarFavorite(item) ? '#FFD700' : '#ccc'"
+                width="24"
+                height="24"
+                @click="handleGrammarFavoriteClick(item)"
+                style="cursor: pointer;"
+            />
+          </button>
         </div>
         <div class="word-info">
           <div class="word-meaning">뜻: {{ item.meaning }}</div>
@@ -59,16 +69,20 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import {computed, onMounted, ref, toRaw} from 'vue'
 import { useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import { getGrammarsByList } from '@/api/fav.js'
+import {
+  getGrammarsByList, getGrammarTexts,
+  toggleGrammarFavorites
+} from '@/api/fav.js'
 import router from "@/router/index.js";
+import {toast} from "vue3-toastify";
 
 const route = useRoute()
 const listId = route.params.id
 const folderName = route.params.name || '문법장'
-
+const grammarTexts = ref([])
 const grammarList = ref([])
 
 onMounted(async () => {
@@ -79,9 +93,69 @@ onMounted(async () => {
   }))
 })
 
-const toggleDetail = (index) => {
-  grammarList.value[index].showDetail = !grammarList.value[index].showDetail
+onMounted(() => {
+  loadFavoriteGrammar();
+});
+
+async function loadFavoriteGrammar() {
+  const favorites = await getGrammarTexts();
+  grammarTexts.value = favorites
 }
+
+const handleGrammarFavoriteClick = async (grammar) => {
+  const raw = toRaw(grammar);
+
+  const grammarText = raw.grammar || raw.text || '';
+  const normalizedText = typeof grammarText === 'string' ? grammarText.trim() : '';
+
+  try {
+    const result = await toggleGrammarFavorites({
+      list_id: raw.list_id,
+      grammar: grammarText,
+      meaning: raw.meaning
+    });
+
+    const label = `<span style="color:#5869ff;">${normalizedText}</span>`;
+    if (result?.message?.includes('추가')) {
+      favoriteGrammarSet.value.add(normalizedText);
+      toast.success(`${label}가 즐겨찾기에 추가되었습니다.`, { dangerouslyHTMLString: true });
+    } else {
+      favoriteGrammarSet.value.delete(normalizedText);
+      toast.error(`${label}가 즐겨찾기에서 삭제되었습니다.`, { dangerouslyHTMLString: true });
+    }
+
+    await loadFavoriteGrammar();
+    await getGrammarsByList(listId);
+  } catch (err) {
+    toast.error('즐겨찾기 처리 중 오류가 발생했습니다.');
+    console.error('❌ 즐겨찾기 토글 오류:', err);
+  }
+};
+
+
+const favoriteGrammarSet = computed(() => {
+  const set = new Set();
+
+  for (const grammar of grammarTexts.value) {
+    set.add(grammar);
+  }
+
+  return set;
+});
+
+function isGrammarFavorite(grammar) {
+  const normalize = (str) => {
+    if (typeof str !== 'string') return '';
+    return str.replace(/^〜/, '').trim();
+  };
+
+  const text = toRaw(grammar)?.grammar;
+  const normalizedText = normalize(text);
+
+  return [...favoriteGrammarSet.value].some(item => normalize(item) === normalizedText);
+}
+
+
 
 const speak = (text) => {
   const utterance = new SpeechSynthesisUtterance(text)
@@ -164,7 +238,8 @@ const startQuiz = () => {
   font-weight: 600;
 }
 
-.tts-btn {
+.tts-btn,
+.fav-btn {
   background: none;
   border: none;
   cursor: pointer;

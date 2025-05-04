@@ -6,7 +6,10 @@
 
     <div class="quiz-card-section">
       <div class="quiz-card">
-        <p>{{ currentQuestion.jp }}</p>
+        <p style="margin-bottom: 0">{{ currentQuestion.jp }}</p>
+        <p v-if="isAnswered" class="explanation ">
+          {{ currentQuestion.question_ko }}
+        </p>
         <p v-if="isAnswered" class="explanation">
           {{ currentQuestion.explanation }}
         </p>
@@ -82,11 +85,18 @@ watch(answers, (val) => {
 
 
 onMounted(async () => {
-  const data = await getSentenceQuiz({ listId, order })  // ✅ 문장 퀴즈 API 호출
+  const cached = JSON.parse(sessionStorage.getItem('quizData') || '[]')
+  if (cached.length > 0) {
+    quizData.value = cached
+    answers.value = Array(cached.length).fill(null)
+    return
+  }
+
+  const data = await getSentenceQuiz({ listId, order })
   quizData.value = data
-  console.log(quizData.value)
   answers.value = Array(data.length).fill(null)
 })
+
 
 const currentQuestion = computed(() =>
     quizData.value.length > currentIndex.value ? quizData.value[currentIndex.value] : null
@@ -138,8 +148,6 @@ const markAsUnknown = () => {
 }
 
 const optionClass = (i) => {
-  console.log('[✅ answer index type]', typeof currentQuestion.value.answer)
-
   if (!isAnswered.value) return ''
   if (i === currentQuestion.value.answer) return 'correct'
   if (i === selectedIndex.value || markedUnknown.value) return 'wrong'
@@ -172,7 +180,7 @@ const submitQuiz = () => {
   try {
     sessionStorage.setItem('quizData', JSON.stringify(quizData.value))
     sessionStorage.setItem('answers', JSON.stringify(answers.value))
-    router.push('/grammar-quiz_result')
+    router.push('/sentence-quiz_result')
   } catch (e) {
     console.error('❌ 퀴즈 제출 중 오류:', e)
   }

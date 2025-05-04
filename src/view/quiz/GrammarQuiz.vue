@@ -79,11 +79,8 @@ watch(answers, (val) => {
 }, { deep: true })
 
 onMounted(async () => {
-  console.log(listId)
-  console.log(order)
   const data = await getGrammarQuiz({ listId, order })
   quizData.value = data
-  console.log('[📦 grammar quiz data]', data) // ← 이거 추가
   answers.value = Array(data.length).fill(null)
 })
 

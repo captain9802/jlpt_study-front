@@ -38,6 +38,16 @@
           <button class="tts-btn" @click="speak(item.text)">
             <Icon icon="mdi:volume-high" width="20" />
           </button>
+          <button class="fav-btn">
+            <Icon
+                :icon="isSentenceFavorite(item) ? 'mdi:star' : 'mdi:star-outline'"
+                :color="isSentenceFavorite(item) ? '#FFD700' : '#ccc'"
+                width="24"
+                height="24"
+                @click="handleSentenceFavoriteClick(item)"
+                style="cursor: pointer;"
+            />
+          </button>
         </div>
         <div class="word-info">
           <div class="word-meaning">뜻: {{ item.translation }}</div>
@@ -66,26 +76,75 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import {computed, onMounted, ref, toRaw} from 'vue'
 import { useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import { getSentencesByList } from '@/api/fav.js'
+import {getSentencesByList, getSentenceTexts, toggleSentenceFavorites} from '@/api/fav.js'
 import router from "@/router/index.js";
+import {toast} from "vue3-toastify";
 
 const route = useRoute()
 const listId = route.params.id
 const folderName = route.params.name || '문장'
-
 const sentenceList = ref([])
+const sentenceTexts = ref([])
 
 onMounted(async () => {
   const fetched = await getSentencesByList(listId)
-  console.log(fetched);
   sentenceList.value = fetched.map(item => ({
     ...item,
     showDetail: false
   }))
 })
+onMounted(() => {
+  loadFavoriteSentence();
+});
+
+function isSentenceFavorite(sentenceObj) {
+  const text = toRaw(sentenceObj)?.text;
+  if (typeof text !== 'string') return false;
+
+  const normalized = text.trim();
+  return favoriteSentenceSet.value.has(normalized);
+}
+
+
+const favoriteSentenceSet = computed(() => {
+  return new Set(sentenceTexts.value);
+});
+
+async function loadFavoriteSentence() {
+  const favorites = await getSentenceTexts(); // API 응답
+  sentenceTexts.value = favorites
+}
+
+const handleSentenceFavoriteClick = async (sentence) => {
+  const raw = toRaw(sentence);
+
+  try {
+    const result = await toggleSentenceFavorites({
+      list_id: raw.list_id,
+      text: raw.text,
+      meaning: raw.translation,
+      examples: JSON.parse(JSON.stringify(raw.examples || [])),
+    });
+
+    const label = `<span style="color:#5869ff;">${raw.text}</span>`;
+    if (result?.message?.includes('추가')) {
+      favoriteSentenceSet.value.add(raw.text.trim());
+      toast.success(`${label}가 즐겨찾기에 추가되었습니다.`, { dangerouslyHTMLString: true });
+    } else {
+      favoriteSentenceSet.value.delete(raw.text.trim());
+      toast.error(`${label}가 즐겨찾기에서 삭제되었습니다.`, { dangerouslyHTMLString: true });
+    }
+    await loadFavoriteSentence();
+    await getSentencesByList(listId);
+  } catch (err) {
+    toast.error('즐겨찾기 처리 중 오류가 발생했습니다.');
+    console.error('❌ 즐겨찾기 토글 오류:', err);
+  }
+};
+
 
 const speak = (text) => {
   const utterance = new SpeechSynthesisUtterance(text)
@@ -166,7 +225,8 @@ const startQuiz = () => {
   font-weight: 600;
 }
 
-.tts-btn {
+.tts-btn,
+.fav-btn {
   background: none;
   border: none;
   cursor: pointer;

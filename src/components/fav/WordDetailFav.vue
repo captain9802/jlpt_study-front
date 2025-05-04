@@ -53,8 +53,15 @@
           <button class="tts-btn" @click="speak(word.text)">
             <Icon icon="mdi:volume-high" width="20" />
           </button>
-          <button class="fav-btn" @click="toggleFavorite(i)">
-            <Icon :icon="word.favorite ? 'mdi:star' : 'mdi:star-outline'" width="20" />
+          <button class="fav-btn">
+            <Icon
+                :icon="isFavorite(word) ? 'mdi:star' : 'mdi:star-outline'"
+                :color="isFavorite(word) ? '#FFD700' : '#ccc'"
+                width="24"
+                height="24"
+                @click="handleWordFavoriteClick(word)"
+                style="cursor: pointer;"
+            />
           </button>
         </div>
         <div class="word-info">
@@ -88,17 +95,22 @@
 </template>
 
 <script setup>
-import {onMounted, ref} from 'vue'
+import {computed, onMounted, ref, toRaw} from 'vue'
 import { Icon } from '@iconify/vue'
 import { useRoute } from 'vue-router'
-import {getWordsByList} from "@/api/fav.js";
+import {
+  getFavoriteWords,
+  getWordsByList,
+  toggleFavorites,
+} from "@/api/fav.js";
 import router from "@/router/index.js";
+import {toast} from "vue3-toastify";
 
 const route = useRoute()
 const listId = route.params.id
 const folderName = route.params.name || '단어장'
-
 const wordList = ref([])
+const favoriteWords = ref([])
 
 onMounted(async () => {
   const fetchedWords = await getWordsByList(listId)
@@ -109,6 +121,70 @@ onMounted(async () => {
     showDetail: false
   }))
 })
+
+onMounted(() => {
+  loadFavoriteWords();
+});
+
+async function loadFavoriteWords() {
+  try {
+    const favorites = await getFavoriteWords();
+    favoriteWords.value = favorites;
+  } catch (error) {
+    console.error('즐겨찾기 단어 불러오기 실패:', error);
+  }
+}
+
+const handleWordFavoriteClick = async (word) => {
+  const raw = toRaw(word);
+
+  try {
+    const result = await toggleFavorites({
+      list_id: raw.list_id,
+      text: raw.text,
+      reading: raw.reading,
+      meaning: raw.meaning,
+      onyomi: raw.onyomi,
+      kunyomi: raw.kunyomi,
+      examples: JSON.parse(JSON.stringify(raw.examples || [])),
+      breakdown: JSON.parse(JSON.stringify(raw.breakdown || []))
+    })
+
+    const label = `<span style="color:#5869ff;">${raw.text}</span>`;
+    if (result?.message?.includes('추가')) {
+      favoriteSet.value.add(raw.text.trim());
+      toast.success(`${label}가 즐겨찾기에 추가되었습니다.`, { dangerouslyHTMLString: true });
+    } else {
+      favoriteSet.value.delete(raw.text.trim());
+      toast.error(`${label}가 즐겨찾기에서 삭제되었습니다.`, { dangerouslyHTMLString: true });
+    }
+    await loadFavoriteWords();
+    await getWordsByList(listId);
+  } catch (err) {
+    toast.error('즐겨찾기 처리 중 오류가 발생했습니다.');
+    console.error('❌ 즐겨찾기 토글 오류:', err);
+  }
+};
+
+const favoriteSet = computed(() => {
+  const set = new Set();
+
+  for (const item of favoriteWords.value) {
+    set.add(item.text);
+
+    if (item.breakdown) {
+      const kanji = item.breakdown.map(b => b.kanji).join('');
+      if (kanji.length > 0) set.add(kanji);
+    }
+  }
+
+  return set;
+});
+
+
+function isFavorite(word) {
+  return favoriteSet.value.has(word.text);
+}
 
 const dialogRef = ref();
 const quizSettings = ref({

@@ -11,49 +11,44 @@
         <div class="number">{{ correctAnswers.length }}개</div>
       </div>
     </div>
+
     <div class="expand-section">
       <div class="expand-container">
         <div :class="['expand-wrong', { open: wrongExpanded }]">
           <div class="expand-header" @click="toggleWrong">
-            <Icon
-                :icon="wrongExpanded ? 'mdi:chevron-down' : 'mdi:chevron-right'"
-                class="arrow-icon"
-            />
+            <Icon :icon="wrongExpanded ? 'mdi:chevron-down' : 'mdi:chevron-right'" class="arrow-icon" />
             {{ wrongExpanded ? '오답 문제 접기' : '오답 문제 펼쳐보기' }}
           </div>
           <div v-show="wrongExpanded" class="word-list">
-            <div v-for="(word, i) in wrongAnswers" :key="i" class="word-item">
+            <div v-for="(item, i) in wrongAnswers" :key="i" class="word-item">
               <div class="word-header">
-                <span class="word-text">{{ word.ja }}</span>
-                <button class="tts-btn" @click="speak(word.ja)">
+                <span class="word-text">{{ item.ja }}</span>
+                <button class="tts-btn" @click="speak(item.ja)">
                   <Icon icon="mdi:volume-high" width="20" />
                 </button>
               </div>
-              <div class="word-info">뜻: {{ word.ko }}</div>
-            </div>
-          </div>
-        </div>
-        <div :class="['expand-correct', { open: correctExpanded }]">
-          <div class="expand-header" @click="toggleCorrect">
-            <Icon
-                :icon="correctExpanded ? 'mdi:chevron-down' : 'mdi:chevron-right'"
-                class="arrow-icon"
-            />
-            {{ correctExpanded ? '정답 문제 접기' : '정답 문제 펼쳐보기' }}
-          </div>
-          <div v-show="correctExpanded" class="word-list">
-            <div v-for="(word, i) in correctAnswers" :key="i" class="word-item">
-              <div class="word-header">
-                <span class="word-text">{{ word.ja }}</span>
-                <button class="tts-btn" @click="speak(word.ja)">
-                  <Icon icon="mdi:volume-high" width="20" />
-                </button>
-              </div>
-              <div class="word-info">뜻: {{ word.ko }}</div>
+              <div class="word-info">뜻: {{ item.ko }}</div>
             </div>
           </div>
         </div>
 
+        <div :class="['expand-correct', { open: correctExpanded }]">
+          <div class="expand-header" @click="toggleCorrect">
+            <Icon :icon="correctExpanded ? 'mdi:chevron-down' : 'mdi:chevron-right'" class="arrow-icon" />
+            {{ correctExpanded ? '정답 문제 접기' : '정답 문제 펼쳐보기' }}
+          </div>
+          <div v-show="correctExpanded" class="word-list">
+            <div v-for="(item, i) in correctAnswers" :key="i" class="word-item">
+              <div class="word-header">
+                <span class="word-text">{{ item.ja }}</span>
+                <button class="tts-btn" @click="speak(item.ja)">
+                  <Icon icon="mdi:volume-high" width="20" />
+                </button>
+              </div>
+              <div class="word-info">뜻: {{ item.ko }}</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -64,7 +59,6 @@
   </div>
 </template>
 
-
 <script setup>
 import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -74,8 +68,17 @@ const correctAnswers = ref([])
 const wrongAnswers = ref([])
 
 onMounted(() => {
-  const quizData = JSON.parse(sessionStorage.getItem('quizData') || '[]')
-  const answers = JSON.parse(sessionStorage.getItem('answers') || '[]')
+  const rawAnswers = sessionStorage.getItem('answers')
+  const rawQuiz = sessionStorage.getItem('quizData')
+
+  if (!rawAnswers || !rawQuiz) {
+    alert('결과 정보가 없습니다.')
+    router.push('/sentence_favorites')
+    return
+  }
+
+  const quizData = JSON.parse(rawQuiz)
+  const answers = JSON.parse(rawAnswers)
 
   quizData.forEach((question, index) => {
     const user = answers[index] || {}
@@ -85,18 +88,14 @@ onMounted(() => {
     const target = isCorrect ? correctAnswers.value : wrongAnswers.value
 
     const answerOption = question.options[question.answer]
-
-    const isKorean = /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(question.jp)
-
-    const jpText = isKorean ? answerOption.text : question.jp
-    const koText = isKorean ? question.jp : answerOption.text
-
     target.push({
-      ja: jpText,
-      ko: koText
+      ja: question.jp,
+      ko: question.question_ko,
+      explanation: question.explanation ?? ''
     })
   })
 })
+
 
 const speak = (text) => {
   const utterance = new SpeechSynthesisUtterance(text)
@@ -110,69 +109,58 @@ const retryWrong = () => {
     alert('리스트 정보가 없습니다.')
     return
   }
-  const quizData = wrongAnswers.value.map((item) => {
-    const direction = Math.random() < 0.5 ? 'jp-ko' : 'ko-jp'
 
-    const questionText = item.ja
-    const correctText = direction === 'jp-ko' ? item.ko : item.ja
-    const correct = {
-      text: correctText,
-      translation: direction === 'jp-ko' ? item.ja : item.ko,
-      explanation: item.explanation ?? ''
-    }
+  const rawQuiz = sessionStorage.getItem('quizData')
+  const rawAnswers = sessionStorage.getItem('answers')
+  if (!rawQuiz || !rawAnswers) {
+    alert('퀴즈 데이터가 없습니다.')
+    return
+  }
 
-    const wrongOptions = wrongAnswers.value
-        .filter(w => w.ja !== item.ja)
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 3)
-        .map(opt => ({
-          text: direction === 'jp-ko' ? opt.ko : opt.ja,
-          translation: direction === 'jp-ko' ? opt.ja : opt.ko,
-          explanation: opt.explanation ?? '틀린 문법입니다'
-        }))
+  const quizData = JSON.parse(rawQuiz)
+  const answers = JSON.parse(rawAnswers)
 
-    const options = [...wrongOptions, correct].sort(() => Math.random() - 0.5)
-    const answerIndex = options.findIndex(
-        opt => opt.text === correct.text && opt.translation === correct.translation
-    )
+  const wrongOnly = quizData.filter((q, index) => {
+    const user = answers[index]
+    return user?.selectedIndex !== q.answer
+  })
+
+  const newQuiz = wrongOnly.map((item) => {
+    const correctOption = item.options[item.answer]
+    const shuffled = [...item.options].sort(() => Math.random() - 0.5)
+    const newAnswerIndex = shuffled.findIndex(opt => opt.text === correctOption.text)
 
     return {
-      jp: questionText,
-      options,
-      answer: answerIndex
+      ...item,
+      options: shuffled,
+      answer: newAnswerIndex
     }
   })
 
-  const shuffled = quizData.sort(() => Math.random() - 0.5)
-  sessionStorage.setItem('quizData', JSON.stringify(shuffled))
+  sessionStorage.setItem('quizData', JSON.stringify(newQuiz))
   sessionStorage.setItem('answers', JSON.stringify([]))
+  sessionStorage.setItem('lastListId', listId)
   router.push({
-    path: '/grammar_quiz',
-    query: {
-      listId: listId,
-      order: 'shuffle'
-    }
+    path: '/sentence_quiz',
+    query: { listId, order: 'shuffle' }
   })
 }
+
 
 const goBack = () => {
   sessionStorage.removeItem('quizData')
   sessionStorage.removeItem('answers')
   sessionStorage.removeItem('currentIndex')
-  router.push('/grammar_favorites')
+  router.push('/sentence_favorites')
 }
-
 
 const correctExpanded = ref(true)
 const wrongExpanded = ref(true)
 
-const toggleCorrect = () => {
-  correctExpanded.value = !correctExpanded.value
-}
-const toggleWrong = () => {
-  wrongExpanded.value = !wrongExpanded.value
-}
+const toggleCorrect = () => correctExpanded.value = !correctExpanded.value
+const toggleWrong = () => wrongExpanded.value = !wrongExpanded.value
 </script>
+
 
 <style scoped>
 .expand-container {

@@ -200,7 +200,6 @@ function finishQuiz() {
   clearInterval(timerInterval)
   quizMode.value = false
   showResult.value = true
-  console.log(timerInterval)
 }
 
 function startTimer() {

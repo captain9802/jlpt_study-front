@@ -97,7 +97,6 @@ onMounted(() => {
       ko: koText
     })
   })
-  console.log(quizData);
 })
 
 const speak = (text) => {

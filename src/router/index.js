@@ -12,6 +12,7 @@ import SentenceDetailFav from "@/components/fav/SentenceDetailFav.vue";
 import GrammarQuiz from "@/view/quiz/GrammarQuiz.vue";
 import QuizGrammarResult from "@/components/result/QuizGrammarResult.vue";
 import SentenceQuiz from "@/view/quiz/SentenceQuiz.vue";
+import QuizSentenceResult from "@/components/result/QuizSentenceResult.vue";
 
 const routes = [
     {
@@ -78,6 +79,11 @@ const routes = [
         path: '/Grammar-quiz_result',
         name: 'GrammarQuizResult',
         component: QuizGrammarResult
+    },
+    {
+        path: '/Sentence-quiz_result',
+        name: 'SentenceQuizResult',
+        component: QuizSentenceResult
     },
     {
         path: '/chat_memory',

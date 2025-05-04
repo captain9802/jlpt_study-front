@@ -100,8 +100,6 @@ onMounted(async () => {
     }
     return
   }
-
-  console.log('[❌ quizData 없음, API 호출 예정]')
   const { listId, order, direction } = route.query
   const data = await getWordQuiz({ listId, order, direction })
   quizData.value = data

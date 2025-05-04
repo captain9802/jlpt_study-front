@@ -1,5 +1,6 @@
 <template>
   <div class="chat-wrapper" style="margin-top: 66px;">
+    <Loading :visible="isLoading" />
     <div class="chat-container">
       <div :class="['chat-set', { center: showSetting }]">
         <Aiset v-if="showSetting === true" @complete="handleSettingComplete" />
@@ -174,36 +175,29 @@ import {
   toggleFavorites,
   toggleGrammarFavorites, toggleSentenceFavorites
 } from "@/api/fav.js";
+import Loading from "@/components/Loading.vue";
 const loadingTooltips = ref({})
 const showSetting = ref(false)
 const message = ref('')
 
 const placeholder = '여기에 메세지를 입력해주세요.\n(ここにメッセージを入力してください.)'
-
+let res = null;
 const messages = ref([])
 const languageMode = ref(false);
-let res = null
+const wordList = ref([])
 const userInput = ref('')
 const maxLength = 200
 const favoriteWords = ref([])
 const grammarTexts = ref([])
 const grammarLists = ref([])
+const sentenceList = ref([])
 const sentenceTexts = ref([])
 const userWordbooks = ref([])
+const isLoading = ref(false)
 
 const selectedFavType = ref(null)
 const selectedFavContent = ref(null)
 const showFavoriteSelectModal = ref(false)
-
-watch(selectedFavType, (type) => {
-  if (type === 'word') {
-    userWordbooks.value = res.value
-  } else if (type === 'grammar') {
-    userWordbooks.value = grammarLists.value
-  } else {
-    userWordbooks.value = []
-  }
-})
 
 onMounted(async () => {
   await loadFavoriteWords()
@@ -322,8 +316,8 @@ const handleTooltipClick = async (index, msg) => {
 
   loadingTooltips.value[index] = true
   try {
+    isLoading.value = true
     const data = await fetchTooltipInfo(msg.text)
-    console.log('[✅ 받은 툴팁 데이터]', data)
     msg.explanation = {
       translation: msg.explanation?.translation ?? data.explanation.translation,
       grammar: data.explanation.grammar,
@@ -333,6 +327,7 @@ const handleTooltipClick = async (index, msg) => {
   } catch (err) {
     console.error('툴팁 정보 요청 실패:', err)
   } finally {
+    isLoading.value = false
     loadingTooltips.value[index] = false
   }
 }
@@ -361,9 +356,8 @@ function saveMessagesToStorage() {
 }
 
 onMounted(async () => {
-  res = await getMemories()
+   res = await getMemories()
   if (res.data.Aisetting) {
-    console.log(res);
     languageMode.value = res.data.hasLanguageMode
     showSetting.value = false
     handleSettingComplete()
@@ -371,12 +365,30 @@ onMounted(async () => {
 })
 
 onMounted(async () => {
-  res = await getWordLists()
-  grammarLists.value = await getGrammarLists()
-  sentenceTexts.value = await getSentenceLists()
+  const wordRes = await getWordLists()
+  const grammarRes = await getGrammarLists()
+  const sentenceRes = await getSentenceLists()
 
-  userWordbooks.value = res
+  res.value = wordRes
+  grammarLists.value = grammarRes
+  sentenceList.value = sentenceRes
+
+  updateUserWordbooks()
 })
+
+watch(selectedFavType, () => {
+  updateUserWordbooks()
+})
+
+const updateUserWordbooks = () => {
+  if (selectedFavType.value === 'word') {
+    userWordbooks.value = res.value
+  } else if (selectedFavType.value === 'grammar') {
+    userWordbooks.value = grammarLists.value
+  } else {
+    userWordbooks.value = sentenceList.value
+  }
+}
 
 function highlightFavorites(text, msg) {
   if (typeof text !== 'string') return '';
@@ -406,8 +418,6 @@ const loadFavoriteSentence = async () => {
   try {
     const data = await getSentenceTexts()
     sentenceTexts.value = data
-    console.log(sentenceTexts.value);
-    console.log("문장 불러오기 완료")
   } catch (error) {
     console.error('즐겨찾기 문장 불러오기 실패:', error)
   }
@@ -418,7 +428,6 @@ const loadFavoriteGrammar = async () => {
   try {
     const data = await getGrammarTexts()
     grammarTexts.value = data
-    console.log("문법 불러오기 완료")
   } catch (error) {
     console.error('즐겨찾기 문법 불러오기 실패:', error);
   }
@@ -436,12 +445,12 @@ async function loadFavoriteWords() {
 async function handleAddToBook(book, forceDelete = false) {
   const content = selectedFavContent.value;
   const type = content.type || 'word';
-  console.log(content);
-  console.log(book);
+
+  isLoading.value = true;
 
   try {
     let result;
-
+    showFavoriteSelectModal.value = false;
     if (type === 'word') {
       result = await toggleFavorites({
         list_id: book.id,
@@ -453,24 +462,19 @@ async function handleAddToBook(book, forceDelete = false) {
         examples: JSON.parse(JSON.stringify(content.examples || [])),
         breakdown: JSON.parse(JSON.stringify(content.breakdown || []))
       });
-    }
-
-    else if (type === 'grammar') {
+    } else if (type === 'grammar') {
       result = await toggleGrammarFavorites({
         list_id: book.id,
-        grammar: content.grammar || content.text,    // text 대신 grammar가 없으면 text
+        grammar: content.grammar || content.text,
         meaning: content.meaning
       });
-    }
-
-    else if (type === 'sentence') {
+    } else if (type === 'sentence') {
       result = await toggleSentenceFavorites({
         list_id: book.id,
         text: content.text,
         meaning: content.meaning,
         examples: JSON.parse(JSON.stringify(content.examples || []))
       });
-      console.log(result);
     }
 
     const label = `<span style="color:#5869ff;">${content.text}</span>`;
@@ -481,18 +485,18 @@ async function handleAddToBook(book, forceDelete = false) {
     } else {
       toast.error(`${label}가 즐겨찾기에서 삭제되었습니다.`, { dangerouslyHTMLString: true });
     }
-
   } catch (err) {
     toast.error('즐겨찾기 처리 중 오류가 발생했습니다.');
     console.error('❌ 즐겨찾기 토글 오류:', err);
+  } finally {
+    if (type === 'word') await loadFavoriteWords();
+    else if (type === 'grammar') await loadFavoriteGrammar();
+    else if (type === 'sentence') await loadFavoriteSentence();
+
+    isLoading.value = false;
   }
-
-  if (type === 'word') await loadFavoriteWords();
-  else if (type === 'grammar') await loadFavoriteGrammar();
-  else if (type === 'sentence') await loadFavoriteSentence();
-
-  showFavoriteSelectModal.value = false;
 }
+
 
 
 function closeFavModal() {
@@ -603,13 +607,6 @@ async function sendMessage() {
         else {
           displayText = '⚠️ 알 수 없는 응답 형식입니다.'
         }
-
-        console.log('text:', parsed.text)
-        console.log('translation:', parsed.translation)
-        console.log('isTextKorean:', looksLikeFullKorean(parsed.text))
-        console.log('isTranslationKorean:', looksLikeFullKorean(parsed.translation))
-
-
 
         if (typeof parsed.text === 'string' && typeof parsed.translation === 'string') {
           if (looksLikeFullKorean(parsed.text) && !looksLikeFullKorean(parsed.translation)) {

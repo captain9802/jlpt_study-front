@@ -1,5 +1,6 @@
 <template>
   <div class="fav-page" style="margin-top: 66px;">
+    <Loading :visible="isLoading" />
     <h2 class="title">{{ pageTitle }}</h2>
     <div class="card-grid">
       <div
@@ -45,7 +46,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import {computed, ref, onMounted, watch} from 'vue'
 import { useRoute } from 'vue-router'
 import { Icon } from "@iconify/vue"
 import { toast } from "vue3-toastify"
@@ -62,10 +63,21 @@ import {
   createSentenceList, updateSentenceList, deleteSentenceList
 } from '@/api/fav'
 import router from "@/router/index.js";
+import Loading from "@/components/Loading.vue";
 
 const route = useRoute()
 
 const cardList = ref([])
+
+const isLoading = ref(true);
+
+onMounted(() => {
+  fetchLists()
+})
+
+watch(() => route.path, (newPath) => {
+  fetchLists()
+})
 
 const goToDetail = (card) => {
   if (route.path === '/word_favorites') {
@@ -90,30 +102,37 @@ const randomColor = () => {
 }
 
 const fetchLists = async () => {
-  if (route.path === '/word_favorites') {
-    const lists = await getWordLists()
-    cardList.value = lists.map(list => ({
-      ...list,
-      label: list.title,
-      preview: '미리보기 없음',
-      editing: false
-    }))
-  } else if (route.path === '/grammar_favorites') {
-    const lists = await getGrammarLists()
-    cardList.value = lists.map(list => ({
-      ...list,
-      label: list.title,
-      preview: '미리보기 없음',
-      editing: false
-    }))
-  } else if (route.path === '/sentence_favorites') {
-    const lists = await getSentenceLists()
-    cardList.value = lists.map(list => ({
-      ...list,
-      label: list.title,
-      preview: '미리보기 없음',
-      editing: false
-    }))
+  isLoading.value = true
+  try {
+    if (route.path === '/word_favorites') {
+      const lists = await getWordLists()
+      cardList.value = lists.map(list => ({
+        ...list,
+        label: list.title,
+        preview: list.preview,
+        editing: false
+      }))
+    } else if (route.path === '/grammar_favorites') {
+      const lists = await getGrammarLists()
+      cardList.value = lists.map(list => ({
+        ...list,
+        label: list.title,
+        preview: list.preview,
+        editing: false
+      }))
+    } else if (route.path === '/sentence_favorites') {
+      const lists = await getSentenceLists()
+      cardList.value = lists.map(list => ({
+        ...list,
+        label: list.title,
+        preview: list.preview,
+        editing: false
+      }))
+    }
+  } catch (err) {
+    console.error('리스트 로딩 실패:', err)
+  } finally {
+    isLoading.value = false
   }
 }
 
