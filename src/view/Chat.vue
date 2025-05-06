@@ -357,6 +357,7 @@ function saveMessagesToStorage() {
 
 onMounted(async () => {
    res = await getMemories()
+   showSetting.value = true
   if (res.data.Aisetting) {
     languageMode.value = res.data.hasLanguageMode
     showSetting.value = false

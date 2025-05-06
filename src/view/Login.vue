@@ -28,7 +28,6 @@ import { kakaoLogin } from '@/api/auth'
 const router = useRouter()
 const KAKAO_KEY = '0a4162b5cdd773131975020c95f4f723'
 
-// ✅ showMain, showButton 추가
 const showMain = ref(false)
 const showButton = ref(false)
 

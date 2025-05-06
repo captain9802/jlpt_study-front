@@ -64,8 +64,6 @@ const menuItems = [
   { to: '/word_favorites', label: '단어 즐겨찾기', icon: '🌟' },
   { to: '/grammar_favorites', label: '문법 즐겨찾기', icon: '📚' },
   { to: '/sentence_favorites', label: '문장 즐겨찾기', icon: '📝' },
-  { to: null, label: '챗 설정', icon: '⚙️' },
-  { to: '/chat_memory', label: '챗 메모리', icon: '🧹' },
   { to: '/study_hiragana', label: '히라가나 학습', icon: 'あ' },
   { to: '/study_katakana', label: '가타카나 학습', icon: 'ア' }
 ]
