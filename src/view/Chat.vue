@@ -61,7 +61,14 @@
                         @click="handleSentenceFavoriteClick(msg)"
                         style="cursor: pointer;"
                     />
-                    <Icon icon="mdi:volume-high" class="icon" color="#ccc" width="24" height="24" />
+                    <Icon
+                        icon="mdi:volume-high"
+                        class="icon"
+                        color="#ccc"
+                        width="24"
+                        height="24"
+                        @click="speakText(msg.text)"
+                    />
                     <Icon
                         icon="mdi:translate"
                         class="icon"
@@ -103,34 +110,6 @@
                                 height="18"
                             />
                           </button>
-                        </div>
-                        <button class="detail-btn" @click="toggleWordDetail(index, i)">[자세히 보기]</button>
-
-                        <div v-if="word.showDetail" class="word-detail">
-                          <table>
-                            <thead>
-                            <tr><th>항목</th><th>내용</th></tr>
-                            </thead>
-                            <tbody>
-                            <tr><td>뜻</td><td>{{ word.meaning }}</td></tr>
-                            <tr><td>음독</td><td>{{ word.onyomi }}</td></tr>
-                            <tr><td>훈독</td><td>{{ word.kunyomi }}</td></tr>
-                            </tbody>
-                          </table>
-                          <div class="examples" v-if="word.examples?.length">
-                            <strong>예시:</strong>
-                            <ul>
-                              <li v-for="(ex, j) in word.examples" :key="j">{{ ex }}</li>
-                            </ul>
-                          </div>
-                          <div v-if="word.breakdown?.length" class="kanji-breakdown">
-                            <strong>한자 구성:</strong>
-                            <ul>
-                              <li v-for="(kanji, k) in word.breakdown" :key="k">
-                                {{ kanji.kanji }} – (음독: {{ kanji.onyomi }} / 훈독: {{ kanji.kunyomi }})
-                              </li>
-                            </ul>
-                          </div>
                         </div>
                       </li>
                     </ul>
@@ -180,7 +159,7 @@ import {
   getGrammarTexts, getSentenceLists, getSentenceTexts,
   getWordLists,
   toggleFavorites,
-  toggleGrammarFavorites, toggleSentenceFavorites
+  toggleGrammarFavorites, toggleSentenceFavorites, fetchWordDetail
 } from "@/api/fav.js";
 import Loading from "@/components/Loading.vue";
 const loadingTooltips = ref({})
@@ -214,6 +193,14 @@ onMounted(async () => {
   await loadFavoriteGrammar()
   await loadFavoriteSentence()
 })
+
+const speakText = (msg) => {
+  const utterance = new SpeechSynthesisUtterance(msg)
+  utterance.lang = 'ja-JP'
+  utterance.rate = 1
+  utterance.pitch = 1
+  speechSynthesis.speak(utterance)
+}
 
 function isSentenceFavorite(sentenceObj) {
   const text = toRaw(sentenceObj)?.text;
@@ -511,15 +498,16 @@ async function handleAddToBook(book, forceDelete = false) {
     let result;
     showFavoriteSelectModal.value = false;
     if (type === 'word') {
+      const wordInfo = await fetchWordDetail(content.text);
       result = await toggleFavorites({
         list_id: book.id,
         text: content.text,
         reading: content.reading,
         meaning: content.meaning,
-        onyomi: content.onyomi,
-        kunyomi: content.kunyomi,
-        examples: JSON.parse(JSON.stringify(content.examples || [])),
-        breakdown: JSON.parse(JSON.stringify(content.breakdown || []))
+        onyomi: wordInfo.onyomi,
+        kunyomi: wordInfo.kunyomi,
+        examples: JSON.parse(JSON.stringify(wordInfo.examples || [])),
+        breakdown: JSON.parse(JSON.stringify(wordInfo.breakdown || []))
       });
     } else if (type === 'grammar') {
       result = await toggleGrammarFavorites({
@@ -594,8 +582,6 @@ async function sendMessage() {
   })
 
   const content = res.data.choices?.[0]?.message?.content
-
-  console.log(content);
 
   if (content) {
     try {
@@ -701,10 +687,6 @@ function toggleGrammarFavorite(index, grammarText) {
 function toggleWordFavorite(index, word) {
   const fav = messages.value[index].wordFavorites
   fav[word] = !fav[word]
-}
-
-function toggleWordDetail(msgIndex, wordIndex) {
-  messages.value[msgIndex].words[wordIndex].showDetail = !messages.value[msgIndex].words[wordIndex].showDetail
 }
 
 function toggleTranslation(index) {
