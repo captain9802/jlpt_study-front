@@ -5,6 +5,13 @@
       <div :class="['chat-set', { center: showSetting }]">
         <Aiset v-if="showSetting === true" @complete="handleSettingComplete" />
         <div v-else class="chat-content">
+          <div v-if="showLanguageDialog" class="language-dialog-overlay">
+            <div class="language-dialog">
+              <p class="question">어떤 방식으로 대화할까요?</p>
+              <button @click="chooseLanguage('jp-only')">① 일본어로만</button>
+              <button @click="chooseLanguage('ko')">② 일본어 + 한국어 혼합</button>
+            </div>
+          </div>
           <transition-group name="chat" tag="div" class="chat-messages">
             <div
                 v-for="(msg, index) in messages"
@@ -183,7 +190,6 @@ const message = ref('')
 const placeholder = '여기에 메세지를 입력해주세요.\n(ここにメッセージを入力してください.)'
 let res = null;
 const messages = ref([])
-const languageMode = ref(false);
 const wordList = ref([])
 const userInput = ref('')
 const maxLength = 200
@@ -198,6 +204,10 @@ const isLoading = ref(false)
 const selectedFavType = ref(null)
 const selectedFavContent = ref(null)
 const showFavoriteSelectModal = ref(false)
+
+const languageMode = ref('')
+const showLanguageChoice = ref(false)
+const showLanguageDialog = ref(false)
 
 onMounted(async () => {
   await loadFavoriteWords()
@@ -355,6 +365,39 @@ function saveMessagesToStorage() {
   localStorage.setItem('ai-messages', JSON.stringify(messages.value))
 }
 
+onMounted(() => {
+  window.chooseLangMode = async (mode) => {
+    languageMode.value = mode
+    showLanguageChoice.value = false
+    try {
+      await updateLanguageMode(mode)
+      handleAiMessage({
+        from: 'ai',
+        text: '좋아요! 이제 일본어 공부를 시작해볼까요? ✨',
+        avatar: '/악어.png'
+      })
+    } catch (e) {
+      console.error('❌ 언어 모드 저장 실패:', e)
+    }
+  }
+})
+
+const chooseLanguage = async (mode) => {
+  languageMode.value = mode
+  showLanguageDialog.value = false
+  try {
+    await updateLanguageMode(mode)
+    handleAiMessage({
+      from: 'ai',
+      text: '좋아요! 이제 일본어 공부를 시작해볼까요? ✨',
+      avatar: '/악어.png'
+    })
+  } catch (e) {
+    console.error('❌ 언어 모드 저장 실패:', e)
+  }
+}
+
+
 onMounted(async () => {
    res = await getMemories()
    showSetting.value = true
@@ -362,6 +405,18 @@ onMounted(async () => {
     languageMode.value = res.data.hasLanguageMode
     showSetting.value = false
     handleSettingComplete()
+  }
+
+  if (res?.data?.data?.length && !localStorage.getItem('ai-messages')) {
+    handleAiMessage({
+      from: 'ai',
+      text: `다시 왔구나! 와줘서 기뻐~ 👋 `,
+      avatar: '/악어.png'
+    })
+  }
+
+  if (!languageMode.value) {
+    showLanguageChoice.value = true
   }
 })
 
@@ -392,6 +447,9 @@ const updateUserWordbooks = () => {
 }
 
 function highlightFavorites(text, msg) {
+
+  if (msg.isHtml) return text;
+
   if (typeof text !== 'string') return '';
 
   const favorites = [...favoriteSet.value];
@@ -499,12 +557,11 @@ async function handleAddToBook(book, forceDelete = false) {
 }
 
 
-
 function closeFavModal() {
   showFavoriteSelectModal.value = false
 }
 
-async function handleSettingComplete() {
+const handleSettingComplete = () => {
   showSetting.value = false
   const avatarName = document.querySelector('.avatar-name')?.innerText || 'AI'
   const stored = JSON.parse(sessionStorage.getItem('Aiset') || '{}')
@@ -519,24 +576,9 @@ async function handleSettingComplete() {
 
   sessionStorage.setItem('AiSettings', JSON.stringify(settings))
 
-  setTimeout(() => {
-    if (!languageMode.value) {
-    handleAiMessage({
-      from: 'ai',
-      text: '어떤 방식으로 대화할까요?\n1. 일본어로만\n2. 한국어 설명 포함\n3. 혼합 방식',
-      avatar: '/악어.png',
-      showTooltip: false
-    })
-  }}, 500)
-
-  if (res?.data?.data?.length && !localStorage.getItem('ai-messages')) {
-    handleAiMessage({
-      from: 'ai',
-      text: `다시 왔구나! 와줘서 기뻐~ 👋 `,
-      avatar: '/악어.png'
-    })
-  }
-}
+  if (!languageMode.value) {
+    showLanguageDialog.value = true
+  }}
 
 async function sendMessage() {
   const userText = message.value.trim()
@@ -546,39 +588,14 @@ async function sendMessage() {
   message.value = ''
   scrollToBottom()
 
-  if (!languageMode.value) {
-    if (/^1$/.test(userText)) languageMode.value = 'jp-only'
-    else if (/^2$/.test(userText)) languageMode.value = 'ko'
-    else if (/^3$/.test(userText)) languageMode.value = 'mix'
-
-    if (languageMode.value) {
-      try {
-        await updateLanguageMode(languageMode.value)
-        handleAiMessage({
-          from: 'ai',
-          text: '좋아요! 이제 일본어 공부를 시작해볼까요? ✨',
-          avatar: '/악어.png'
-        })
-      } catch (e) {
-        console.error('❌ 언어 모드 저장 실패:', e)
-      }
-      return
-    }
-
-    handleAiMessage({
-      from: 'ai',
-      text: '1, 2, 3 중 하나를 숫자로 입력해 주세요.',
-      avatar: '/악어.png'
-    })
-    return
-  }
-
   const res = await sendChat({
     message: userText,
     language: languageMode.value
   })
 
   const content = res.data.choices?.[0]?.message?.content
+
+  console.log(content);
 
   if (content) {
     try {
@@ -988,20 +1005,6 @@ function scrollToBottom() {
   padding-left: 0.5rem;
 }
 
-.chat-enter-from {
-  opacity: 0;
-  transform: translateY(20px);
-}
-
-.chat-enter-active {
-  transition: all 0.4s ease;
-}
-
-.chat-enter-to {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 .chat-messages::-webkit-scrollbar {
   width: 4px;
 }
@@ -1015,11 +1018,62 @@ function scrollToBottom() {
   background: transparent;
 }
 
-.chat-center-notice {
-  text-align: center;
-  color: #888;
-  font-size: 0.85rem;
-  margin-bottom: 1rem;
+.language-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
 }
+
+.language-dialog {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 1rem;
+  background-color: #ffffff;
+  padding: 2rem 2.5rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 15px 25px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.language-dialog .question {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.language-dialog button {
+  display: block;
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: 0.9rem;
+  font-size: 1rem;
+  border: none;
+  background-color: #5a75ff;
+  color: white;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.language-dialog button:hover {
+  background-color: #4055d4;
+  transform: translateY(-2px);
+}
+
+.language-dialog button:active {
+  transform: translateY(0);
+}
+
+
+
 </style>
 
