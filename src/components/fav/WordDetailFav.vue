@@ -199,6 +199,10 @@ const closeDialog = () => {
   dialogRef.value?.close()
 }
 const startQuiz = () => {
+  sessionStorage.removeItem('quizData')
+  sessionStorage.removeItem('answers')
+  sessionStorage.removeItem('currentIndex')
+  sessionStorage.removeItem('quizCount')
   dialogRef.value?.close()
   const { order, direction } = quizSettings.value
   sessionStorage.setItem('lastListId', listId)

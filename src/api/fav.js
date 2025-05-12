@@ -166,3 +166,17 @@ export const getWordQuizLimited = async ({ listId, order, direction, count }) =>
     })
     return res.data
 }
+
+export const getJlptChoicePool = async ({ listId, count }) => {
+    const res = await API.post('/quiz/jlpt/choices', {
+        list_id: listId,
+        count
+    })
+    return res.data
+}
+
+export const getFavoriteChoicePool = async ({ count }) => {
+    const res = await API.post('/quiz/favorites/choices', { count })
+    return res.data
+}
+

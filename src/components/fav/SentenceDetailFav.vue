@@ -167,6 +167,10 @@ const closeDialog = () => {
 }
 
 const startQuiz = () => {
+  sessionStorage.removeItem('quizData')
+  sessionStorage.removeItem('answers')
+  sessionStorage.removeItem('currentIndex')
+  sessionStorage.removeItem('quizCount')
   dialogRef.value?.close()
 
   const { order } = quizSettings.value

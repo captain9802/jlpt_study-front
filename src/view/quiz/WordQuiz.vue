@@ -7,7 +7,7 @@
     <div class="quiz-card-section">
       <div class="quiz-card">
         <p>{{ currentQuestion.jp }}</p>
-        <button class="tts-btn" @click="speak(currentQuestion.jp)">
+        <button class="tts-btn" @click="speak(currentQuestion.kana)">
           <Icon icon="mdi:volume-high" width="20" height="20" />
         </button>
       </div>
@@ -30,7 +30,7 @@
       >
         {{ option.text }}
         <span v-if="isAnswered" class="translation">
-      ({{ option.translation }})
+      ({{ option.translation }}) / ({{option.kana}})
     </span>
       </button>
     </div>
@@ -111,9 +111,6 @@ onMounted(async () => {
   quizData.value = data
   answers.value = Array(data.length).fill(null)
 })
-
-
-
 
 const currentQuestion = computed(() =>
     quizData.value.length > currentIndex.value ? quizData.value[currentIndex.value] : null
@@ -199,7 +196,10 @@ const submitQuiz = () => {
   try {
     sessionStorage.setItem('quizData', JSON.stringify(quizData.value))
     sessionStorage.setItem('answers', JSON.stringify(answers.value))
-    router.push('/quiz_result')
+    if (route.query.count) {
+      sessionStorage.setItem('quizCount', route.query.count)
+    }
+    router.push('/word-quiz_result')
   } catch (e) {
     console.error('❌ 퀴즈 제출 중 오류:', e)
   }

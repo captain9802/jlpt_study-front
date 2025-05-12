@@ -178,6 +178,10 @@ const closeDialog = () => {
 }
 
 const startQuiz = () => {
+  sessionStorage.removeItem('quizData')
+  sessionStorage.removeItem('answers')
+  sessionStorage.removeItem('currentIndex')
+  sessionStorage.removeItem('quizCount')
   dialogRef.value?.close()
   sessionStorage.setItem('lastListId', listId)
   sessionStorage.removeItem('quizData')

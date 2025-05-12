@@ -141,16 +141,21 @@ const closeDialog = () => {
 }
 
 const startQuiz = () => {
+  sessionStorage.removeItem('quizData')
+  sessionStorage.removeItem('answers')
+  sessionStorage.removeItem('currentIndex')
+  sessionStorage.removeItem('quizCount')
   dialogRef.value?.close()
+  const listId = level
   const { order, direction, count } = quizSettings.value
-  sessionStorage.setItem('lastListId', level)
+  sessionStorage.setItem('lastListId', listId)
   router.push({
     name: 'Quiz_word',
     query: {
-      level,
+      listId,
       order: quizSettings.value.order,
       direction: quizSettings.value.direction,
-      count: quizSettings.value.count.toString()
+      count: quizSettings.value.count
     }
   })
 }

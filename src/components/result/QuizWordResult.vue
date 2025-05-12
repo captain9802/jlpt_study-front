@@ -24,8 +24,8 @@
           <div v-show="wrongExpanded" class="word-list">
             <div v-for="(word, i) in wrongAnswers" :key="i" class="word-item">
               <div class="word-header">
-                <span class="word-text">{{ word.ja }}</span>
-                <button class="tts-btn" @click="speak(word.ja)">
+                <span class="word-text">{{ word.ja }} / {{(word.kana)}}</span>
+                <button class="tts-btn" @click="speak(word.kana)">
                   <Icon icon="mdi:volume-high" width="20" />
                 </button>
               </div>
@@ -44,8 +44,8 @@
           <div v-show="correctExpanded" class="word-list">
             <div v-for="(word, i) in correctAnswers" :key="i" class="word-item">
               <div class="word-header">
-                <span class="word-text">{{ word.ja }}</span>
-                <button class="tts-btn" @click="speak(word.ja)">
+                <span class="word-text">{{ word.ja }} / {{(word.kana)}}</span>
+                <button class="tts-btn" @click="speak(word.kana)">
                   <Icon icon="mdi:volume-high" width="20" />
                 </button>
               </div>
@@ -69,10 +69,11 @@
 import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import router from '@/router'
-import {getWordsByList} from "@/api/fav.js";
+import {getFavoriteChoicePool, getJlptChoicePool, getWordQuizLimited, getWordsByList} from "@/api/fav.js";
 
 const correctAnswers = ref([])
 const wrongAnswers = ref([])
+const quizCount = Number(sessionStorage.getItem('quizCount') || 0)
 
 onMounted(() => {
   const quizData = JSON.parse(sessionStorage.getItem('quizData') || '[]')
@@ -94,7 +95,8 @@ onMounted(() => {
 
     target.push({
       ja: jpText,
-      ko: koText
+      ko: koText,
+      kana: question.kana
     })
   })
 })
@@ -106,32 +108,52 @@ const speak = (text) => {
 }
 
 const retryWrong = async () => {
-  const listId = parseInt(sessionStorage.getItem('lastListId'))
-  if (!listId || isNaN(listId)) {
+  const listId = ref(null)
+  const raw = sessionStorage.getItem('lastListId')
+  const quizCount = Number(sessionStorage.getItem('quizCount') || 0)
+
+  if (quizCount > 0) {
+    listId.value = raw
+  } else {
+    listId.value = parseInt(raw)
+  }
+
+  if (!listId.value || (quizCount === 0 && isNaN(listId.value))) {
     alert('리스트 정보가 없습니다.')
     return
   }
 
-  const allWords = await getWordsByList(listId)
+  const isJlptQuiz = quizCount > 0
+  const direction = Math.random() < 0.5 ? 'jp-ko' : 'ko-jp'
+  const count = wrongAnswers.value.length
+
+  const choicePool = isJlptQuiz
+      ? await getJlptChoicePool({ listId: listId.value, count })
+      : await getFavoriteChoicePool({count})
 
   const quizData = wrongAnswers.value.map((word) => {
-    const direction = Math.random() < 0.5 ? 'jp-ko' : 'ko-jp'
-
     const questionText = direction === 'jp-ko' ? word.ja : word.ko
     const correctText = direction === 'jp-ko' ? word.ko : word.ja
+    const correctKana = word.kana
 
     const correct = {
       text: correctText,
-      translation: questionText
+      translation: questionText,
+      kana: correctKana
     }
 
-    const wrongOptions = allWords
-        .filter(w => w.text !== word.ja && w.meaning !== word.ko)
+    const wrongOptions = choicePool
+        .filter(opt =>
+            opt.text !== correct.text &&
+            opt.meaning !== correct.translation &&
+            opt.kana !== correctKana
+        )
         .sort(() => Math.random() - 0.5)
         .slice(0, 3)
         .map(opt => ({
           text: direction === 'jp-ko' ? opt.meaning : opt.text,
-          translation: direction === 'jp-ko' ? opt.text : opt.meaning
+          translation: direction === 'jp-ko' ? opt.text : opt.meaning,
+          kana: opt.kana || null
         }))
 
     const options = [...wrongOptions, correct].sort(() => Math.random() - 0.5)
@@ -141,25 +163,31 @@ const retryWrong = async () => {
 
     return {
       jp: questionText,
+      kana: direction === 'jp-ko' ? correctKana : null,
       options,
       answer: answerIndex
     }
   })
 
   const shuffled = quizData.sort(() => Math.random() - 0.5)
+
   sessionStorage.setItem('quizData', JSON.stringify(shuffled))
   sessionStorage.setItem('answers', JSON.stringify([]))
-  sessionStorage.setItem('lastListId', listId)
+  sessionStorage.setItem('lastListId', listId.value)
+  sessionStorage.setItem('quizCount', count.toString())
   router.push('/word_quiz')
 }
-
-
 
 const goBack = () => {
   sessionStorage.removeItem('quizData')
   sessionStorage.removeItem('answers')
   sessionStorage.removeItem('currentIndex')
-  router.push('/word_favorites')
+  sessionStorage.removeItem('quizCount')
+  if (quizCount > 0) {
+    router.push('/jlpt_list')
+  } else {
+    router.push('/word_favorites')
+  }
 }
 
 
