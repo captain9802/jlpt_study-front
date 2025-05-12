@@ -386,8 +386,8 @@ const chooseLanguage = async (mode) => {
 
 
 onMounted(async () => {
-   res = await getMemories()
-   showSetting.value = true
+  res = await getMemories()
+  showSetting.value = true
   if (res.data.Aisetting) {
     languageMode.value = res.data.hasLanguageMode
     showSetting.value = false
@@ -576,87 +576,44 @@ async function sendMessage() {
   message.value = ''
   scrollToBottom()
 
-  const res = await sendChat({
-    message: userText,
-    language: languageMode.value
-  })
+  try {
+    const res = await sendChat({
+      message: userText,
+      language: languageMode.value
+    })
 
-  const content = res.data.choices?.[0]?.message?.content
+    const { text, translation } = res.data
 
-  if (content) {
-    try {
-      const match = content.match(/\[[\s\S]*\]|\{[\s\S]*\}/)
-      if (!match) throw new Error('JSON 블록을 찾을 수 없음')
-
-      const jsonString = match[0]
-      const parsed = JSON.parse(jsonString)
-
-      const parsedArray = Array.isArray(parsed) ? parsed : [parsed]
-
-      parsedArray.forEach((parsed) => {
-        let displayText = parsed.text
-
-        if (Array.isArray(parsed.words) && Array.isArray(parsed.translation)) {
-          displayText = parsed.words.map((item, idx) => {
-            const ko = parsed.translation[idx]?.word ?? ''
-            const level = item.level || parsed.translation[idx]?.level || ''
-            return `${item.word} : ${ko} / ${level}`
-          }).join('\n')
-        }
-
-        else if (typeof parsed.text === 'string') {
-          displayText = parsed.text
-        }
-
-        else {
-          displayText = '⚠️ 알 수 없는 응답 형식입니다.'
-        }
-
-        if (typeof parsed.text === 'string' && typeof parsed.translation === 'string') {
-          if (looksLikeFullKorean(parsed.text) && !looksLikeFullKorean(parsed.translation)) {
-            const temp = parsed.text
-            parsed.text = parsed.translation
-            parsed.translation = temp
-
-            displayText = parsed.text
-          }
-        }
-
-        let finalTranslation = ''
-        if (Array.isArray(parsed.translation)) {
-          finalTranslation = parsed.translation.map(t => `${t.word} / ${t.level}`).join('\n')
-        } else {
-          finalTranslation = parsed.translation || ''
-        }
-
-        handleAiMessage({
-          from: 'ai',
-          text: displayText,
-          avatar: '/악어.png',
-          explanation: {
-            translation: finalTranslation
-          },
-          words: parsed.words || [],
-          showTooltip: false,
-          showInfo: false,
-          showTranslation: false,
-          favorite: false,
-          wordFavorites: {},
-          grammarFavorites: {}
-        })
-      })
-
-    } catch (err) {
-      console.error('GPT 응답 파싱 에러:', err)
-      handleAiMessage({
-        from: 'ai',
-        text: '⚠️ 응답 파싱 실패. 다시 시도해 주세요.',
-        avatar: '/악어.png'
-      })
+    if (!text) {
+      throw new Error('text 필드가 응답에 없음')
     }
 
+    handleAiMessage({
+      from: 'ai',
+      text: text,
+      avatar: '/악어.png',
+      explanation: {
+        translation: translation || ''
+      },
+      words: [], // 단어 정보가 없으므로 비워둠
+      showTooltip: false,
+      showInfo: false,
+      showTranslation: false,
+      favorite: false,
+      wordFavorites: {},
+      grammarFavorites: {}
+    })
+
+  } catch (err) {
+    console.error('GPT 응답 처리 오류:', err)
+    handleAiMessage({
+      from: 'ai',
+      text: '⚠️ 응답 처리 실패. 다시 시도해 주세요.',
+      avatar: '/악어.png'
+    })
+  }
 }
-}
+
 
 function looksLikeFullKorean(text) {
   if (!text) return false

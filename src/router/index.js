@@ -13,6 +13,8 @@ import GrammarQuiz from "@/view/quiz/GrammarQuiz.vue";
 import QuizGrammarResult from "@/components/result/QuizGrammarResult.vue";
 import SentenceQuiz from "@/view/quiz/SentenceQuiz.vue";
 import QuizSentenceResult from "@/components/result/QuizSentenceResult.vue";
+import JlptList from "@/components/JlptList.vue";
+import JlptWord from "@/components/JlptWord.vue";
 
 const routes = [
     {
@@ -99,7 +101,17 @@ const routes = [
         path: '/study_katakana',
         name: 'StudyKatakana',
         component: JpnChobo
-    }
+    },
+    {
+        path: '/jlpt_list',
+        name: 'JlptList',
+        component: JlptList
+    },
+    {
+        path: '/jlpt_words/:level',
+        name: 'JlptWord',
+        component: JlptWord
+    },
 
 ];
 

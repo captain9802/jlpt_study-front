@@ -98,25 +98,24 @@ async function onComplete() {
 
 const optionData = {
   personality: [
-    '밝은(活発)',
-    '차분한(冷静)',
-    '명랑한(快活)',
-    '진지한(真面目)',
-    '장난기 있는(茶目っ気)'
+    '밝은',
+    '차분한',
+    '명랑한',
+    '진지한',
+    '장난기 있는'
   ],
   tone: [
-    '친근한(親しみやすい)',
-    '공손한(丁寧)',
-    '차분한(落ち着いた)',
-    '밝은(明るい)',
-    '애교 있는(愛嬌のある)'
+    '친근한',
+    '공손한',
+    '차분한',
+    '애교 있는'
   ],
   voice: [
-    '여성(女性)',
-    '남성(男性)',
-    '중성(中性的)',
-    '아이 목소리(子供の声)',
-    '로봇 스타일(ロボット風)'
+    '여성',
+    '남성',
+    '중성',
+    '아이 목소리',
+    '로봇 스타일'
   ]
 }
 const currentOptions = reactive({
@@ -126,9 +125,9 @@ const currentOptions = reactive({
 })
 
 const optionList = [
-  { label: '성격(性格)', key: 'personality' },
-  { label: '말투(口調)', key: 'tone' },
-  { label: '목소리(声)', key: 'voice' },
+  { label: '성격', key: 'personality' },
+  { label: '말투', key: 'tone' },
+  { label: '목소리', key: 'voice' },
 ]
 
 function prev(key) {

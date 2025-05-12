@@ -156,3 +156,13 @@ export const getWordQuiz = async ({ listId, order, direction }) => {
     })
     return res.data
 }
+
+export const getWordQuizLimited = async ({ listId, order, direction, count }) => {
+    const res = await API.post('/quiz/jlpt', {
+        list_id: listId,
+        order,
+        direction,
+        count
+    })
+    return res.data
+}

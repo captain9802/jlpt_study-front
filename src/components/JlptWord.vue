@@ -6,7 +6,34 @@
         <Icon icon="mdi:playlist-plus" width="22" /> 퀴즈 작성
       </button>
     </div>
+
+    <div class="word-list" ref="scrollContainer" @scroll="onScroll">
+      <div v-for="(word, i) in wordList" :key="i" class="word-item">
+        <div class="word-header">
+          <span class="word-text">{{ word.word }}({{ word.kana }})</span>
+          <button class="tts-btn" @click="speak(word.word)">
+            <Icon icon="mdi:volume-high" width="20" />
+          </button>
+        </div>
+        <div class="word-info">뜻: {{ word.meaning_ko }}</div>
+      </div>
+      <Loading :visible="isLoading" />
+    </div>
+
     <dialog ref="dialogRef" class="quiz-dialog">
+      <div class="dialog-section">
+        <p>문제 수</p>
+        <input
+            type="number"
+            min="1"
+            :max="maxQuestionCount"
+            v-model.number="quizSettings.count"
+            class="question-input"
+            placeholder="예: 10"
+        />
+        <span> / (최대 {{ maxQuestionCount }}문제)</span>
+      </div>
+
       <div class="dialog-section">
         <p>문제 순서</p>
         <div class="radio-group two-columns">
@@ -20,6 +47,7 @@
           </label>
         </div>
       </div>
+
       <div class="dialog-section">
         <p>문제 언어</p>
         <div class="radio-group three-columns">
@@ -37,183 +65,94 @@
           </label>
         </div>
       </div>
+
       <div class="dialog-actions">
         <button @click="closeDialog">취소하기</button>
         <button class="start-btn" @click="startQuiz">시작하기</button>
       </div>
     </dialog>
-    <div class="word-list">
-      <div
-          v-for="(word, i) in wordList"
-          :key="i"
-          class="word-item"
-      >
-        <div class="word-header">
-          <span class="word-text">{{ word.text }}（{{ word.reading || 'よみ' }}）</span>
-          <button class="tts-btn" @click="speak(word.text)">
-            <Icon icon="mdi:volume-high" width="20" />
-          </button>
-          <button class="fav-btn">
-            <Icon
-                :icon="isFavorite(word) ? 'mdi:star' : 'mdi:star-outline'"
-                :color="isFavorite(word) ? '#FFD700' : '#ccc'"
-                width="24"
-                height="24"
-                @click="handleWordFavoriteClick(word)"
-                style="cursor: pointer;"
-            />
-          </button>
-        </div>
-        <div class="word-info">
-          <div class="word-meaning">뜻: {{ word.meaning }}</div>
-          <div class="word-reading">
-            음독: {{ word.onyomi || 'なし' }} / 훈독: {{ word.kunyomi || 'なし' }}
-          </div>
-        </div>
-        <button class="detail-btn" @click="toggleDetail(i)">
-          {{ word.showDetail ? '[간단히 보기]' : '[자세히 보기]' }}
-        </button>
-        <div v-if="word.showDetail">
-          <div v-if="word.examples?.length" class="word-example">
-            <strong>예시:</strong>
-            <ul>
-              <li v-for="(ex, j) in word.examples" :key="j">{{ ex }}</li>
-            </ul>
-          </div>
-          <div v-if="word.breakdown?.length" class="word-breakdown">
-            <strong>한자 구성:</strong>
-            <ul>
-              <li v-for="(kanji, k) in word.breakdown" :key="k">
-                {{ kanji.kanji }} - (음독: {{ kanji.onyomi }} / 훈독: {{ kanji.kunyomi }})
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup>
-import {computed, onMounted, ref, toRaw} from 'vue'
+import {ref, onMounted, computed} from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import { useRoute } from 'vue-router'
-import {
-  getFavoriteWords,
-  getWordsByList,
-  toggleFavorites,
-} from "@/api/fav.js";
-import router from "@/router/index.js";
-import {toast} from "vue3-toastify";
+import { debounce } from 'lodash'
+import {getWordsByLevel} from "@/api/jlpt.js";
+import Loading from "@/components/Loading.vue";
 
 const route = useRoute()
-const listId = route.params.id
-const folderName = route.params.name || '단어장'
+const router = useRouter()
+const level = route.params.level.toUpperCase()
+const folderName = `JLPT ${level} 단어`
+const isLoading = ref(true);
+
 const wordList = ref([])
-const favoriteWords = ref([])
+const page = ref(1)
+const isLoadingMore = ref(false)
+const hasMore = ref(true)
+const scrollContainer = ref(null)
 
-onMounted(async () => {
-  const fetchedWords = await getWordsByList(listId)
-
-  wordList.value = fetchedWords.map(word => ({
-    ...word,
-    favorite: true,
-    showDetail: false
-  }))
+const maxQuestionCount = computed(() => {
+  return maxQuestionMap[level] || 100
 })
+
+const fetchWords = async () => {
+  if (isLoadingMore.value || !hasMore.value) return
+  isLoadingMore.value = true
+  try {
+    const res = await getWordsByLevel(level, page.value)
+    isLoading.value = false
+    if (res.length === 0) {
+      hasMore.value = false
+    } else {
+      wordList.value.push(...res)
+      page.value++
+    }
+  } catch (err) {
+    console.error('단어 불러오기 실패:', err)
+  } finally {
+    isLoadingMore.value = false
+  }
+}
+
+const onScroll = debounce(() => {
+  const el = scrollContainer.value
+  if (!el) return
+  const bottomReached = el.scrollTop + el.clientHeight >= el.scrollHeight - 50
+  if (bottomReached) {
+    fetchWords()
+  }
+}, 200)
 
 onMounted(() => {
-  loadFavoriteWords();
-});
-
-async function loadFavoriteWords() {
-  try {
-    const favorites = await getFavoriteWords();
-    favoriteWords.value = favorites;
-  } catch (error) {
-    console.error('즐겨찾기 단어 불러오기 실패:', error);
-  }
-}
-
-const handleWordFavoriteClick = async (word) => {
-  const raw = toRaw(word);
-
-  try {
-    const result = await toggleFavorites({
-      list_id: raw.list_id,
-      text: raw.text,
-      reading: raw.reading,
-      meaning: raw.meaning,
-      onyomi: raw.onyomi,
-      kunyomi: raw.kunyomi,
-      examples: JSON.parse(JSON.stringify(raw.examples || [])),
-      breakdown: JSON.parse(JSON.stringify(raw.breakdown || []))
-    })
-
-    const label = `<span style="color:#5869ff;">${raw.text}</span>`;
-    if (result?.message?.includes('추가')) {
-      favoriteSet.value.add(raw.text.trim());
-      toast.success(`${label}가 즐겨찾기에 추가되었습니다.`, { dangerouslyHTMLString: true });
-    } else {
-      favoriteSet.value.delete(raw.text.trim());
-      toast.error(`${label}가 즐겨찾기에서 삭제되었습니다.`, { dangerouslyHTMLString: true });
-    }
-    await loadFavoriteWords();
-    await getWordsByList(listId);
-  } catch (err) {
-    toast.error('즐겨찾기 처리 중 오류가 발생했습니다.');
-    console.error('❌ 즐겨찾기 토글 오류:', err);
-  }
-};
-
-const favoriteSet = computed(() => {
-  const set = new Set();
-
-  for (const item of favoriteWords.value) {
-    set.add(item.text);
-
-    if (item.breakdown) {
-      const kanji = item.breakdown.map(b => b.kanji).join('');
-      if (kanji.length > 0) set.add(kanji);
-    }
-  }
-
-  return set;
-});
-
-
-function isFavorite(word) {
-  return favoriteSet.value.has(word.text);
-}
-
-const dialogRef = ref();
-const quizSettings = ref({
-  order: 'default',
-  direction: 'jp-ko'
+  fetchWords()
 })
+
+const dialogRef = ref()
 
 const openDialog = () => {
   dialogRef.value?.showModal()
 }
+
 const closeDialog = () => {
   dialogRef.value?.close()
 }
+
 const startQuiz = () => {
   dialogRef.value?.close()
-  const { order, direction } = quizSettings.value
-  sessionStorage.setItem('lastListId', listId)
+  const { order, direction, count } = quizSettings.value
+  sessionStorage.setItem('lastListId', level)
   router.push({
     name: 'Quiz_word',
     query: {
-      listId,
+      level,
       order: quizSettings.value.order,
       direction: quizSettings.value.direction,
+      count: quizSettings.value.count.toString()
     }
   })
-}
-
-const toggleDetail = (index) => {
-  wordList.value[index].showDetail = !wordList.value[index].showDetail
 }
 
 const speak = (text) => {
@@ -222,12 +161,23 @@ const speak = (text) => {
   speechSynthesis.speak(utterance)
 }
 
-const toggleFavorite = (i) => {
-  wordList.value[i].favorite = !wordList.value[i].favorite
+const quizSettings = ref({
+  order: 'default',
+  direction: 'jp-ko',
+  count: 10,
+})
+
+const maxQuestionMap = {
+  N1: 2929,
+  N2: 3624,
+  N3: 2232,
+  N4: 659,
+  N5: 701
 }
 </script>
 
 <style scoped>
+
 .fav-detail-page {
   max-width: 1024px;
   margin: 0 auto;
@@ -249,6 +199,8 @@ const toggleFavorite = (i) => {
 }
 
 .word-list {
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -269,47 +221,17 @@ const toggleFavorite = (i) => {
   font-weight: 600;
 }
 
-.tts-btn,
-.fav-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #3e3e3e;
-}
-
 .word-info {
   margin-top: 0.5rem;
   font-size: 0.9rem;
   color: #3e3e3e;
 }
 
-.word-reading {
-  font-size: 0.85rem;
-  color: #3e3e3e;
+.loading-more {
+  text-align: center;
+  color: #999;
+  margin-top: 1rem;
 }
-
-.detail-btn {
-  background: none;
-  border: none;
-  color: #5869ff;
-  font-size: 0.9rem;
-  margin-top: 0.5rem;
-  cursor: pointer;
-}
-
-.word-example,
-.word-breakdown {
-  margin-top: 0.75rem;
-  font-size: 0.9rem;
-  color: #444;
-}
-
-.word-example ul,
-.word-breakdown ul {
-  margin: 0.25rem 0 0 1rem;
-  padding: 0;
-}
-
 .quiz-btn {
   background-color: #5869ff;
   color: white;
@@ -413,6 +335,13 @@ const toggleFavorite = (i) => {
   cursor: pointer;
 }
 
+.tts-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #3e3e3e;
+}
+
 .dialog-actions button:first-child {
   background: #eee;
   color: #3e3e3e;
@@ -422,6 +351,39 @@ const toggleFavorite = (i) => {
   background: #5869ff;
   color: white;
 }
+
+.question-label {
+  font-weight: bold;
+  margin-bottom: 0.3rem;
+  display: inline-block;
+}
+
+.question-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.question-input {
+  width: 70px;
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  outline: none;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+
+.question-input:focus {
+  border-color: #3b82f6;
+}
+
+.max-info {
+  font-size: 0.95rem;
+  color: #555;
+}
+
 
 @media (max-width: 480px) {
   .quiz-dialog {

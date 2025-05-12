@@ -64,6 +64,7 @@ const menuItems = [
   { to: '/word_favorites', label: '단어 즐겨찾기', icon: '🌟' },
   { to: '/grammar_favorites', label: '문법 즐겨찾기', icon: '📚' },
   { to: '/sentence_favorites', label: '문장 즐겨찾기', icon: '📝' },
+  { to: '/jlpt_list', label: 'N1 ~ N5 단어', icon: '🈶' },
   { to: '/study_hiragana', label: '히라가나 학습', icon: 'あ' },
   { to: '/study_katakana', label: '가타카나 학습', icon: 'ア' }
 ]

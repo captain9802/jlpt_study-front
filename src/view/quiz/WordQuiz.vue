@@ -59,7 +59,7 @@
 import {ref, computed, watch, onMounted} from 'vue'
 import { Icon } from '@iconify/vue'
 import router from "@/router/index.js";
-import {getWordQuiz} from "@/api/fav.js";
+import {getWordQuiz, getWordQuizLimited} from "@/api/fav.js";
 import {useRoute} from "vue-router";
 
 const loadIndex = () => parseInt(sessionStorage.getItem('currentIndex')) || 0
@@ -90,7 +90,7 @@ onMounted(async () => {
     quizData.value = JSON.parse(cachedQuiz)
     if (currentIndex.value >= quizData.value.length) {
       currentIndex.value = 0
-      sessionStorage.setItem('currentIndex', '0') // 같이 초기화
+      sessionStorage.setItem('currentIndex', '0')
     }
 
     if (cachedAnswers) {
@@ -100,8 +100,14 @@ onMounted(async () => {
     }
     return
   }
-  const { listId, order, direction } = route.query
-  const data = await getWordQuiz({ listId, order, direction })
+  const { listId, order, direction, count } = route.query
+
+  let data
+  if (count) {
+    data = await getWordQuizLimited({ listId, order, direction, count })
+  } else {
+    data = await getWordQuiz({ listId, order, direction })
+  }
   quizData.value = data
   answers.value = Array(data.length).fill(null)
 })
