@@ -17,4 +17,18 @@ API.interceptors.request.use((config) => {
     return Promise.reject(error)
 })
 
+let isAlertShown = false;
+
+API.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401 && !isAlertShown) {
+            isAlertShown = true;
+            alert('로그인이 필요합니다.');
+            window.location.href = '/';
+        }
+        return Promise.reject(error);
+    }
+)
+
 export default API
