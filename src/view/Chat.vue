@@ -129,8 +129,9 @@
                 :maxlength="maxLength"
                 @input="checkLength"
                 @keydown.enter.exact.prevent="sendMessage"
+                :disabled="isSending"
             />
-            <button class="send-button" @click="sendMessage">
+            <button class="send-button" @click="sendMessage" :disabled="isSending || !message.trim()">
               <Icon icon="mdi:send" class="arrow-icon" color="white" width="24" height="24" />
             </button>
           </div>
@@ -179,7 +180,7 @@ const sentenceList = ref([])
 const sentenceTexts = ref([])
 const userWordbooks = ref([])
 const isLoading = ref(false)
-
+const isSending = ref(false)
 const selectedFavType = ref(null)
 const selectedFavContent = ref(null)
 const showFavoriteSelectModal = ref(false)
@@ -572,6 +573,7 @@ async function sendMessage() {
   const userText = message.value.trim()
   if (!userText) return
 
+  isSending.value = true
   handleAiMessage({ from: 'me', text: userText, avatar: '/다람쥐.jpeg' })
   message.value = ''
   scrollToBottom()
@@ -595,7 +597,7 @@ async function sendMessage() {
       explanation: {
         translation: translation || ''
       },
-      words: [], // 단어 정보가 없으므로 비워둠
+      words: [],
       showTooltip: false,
       showInfo: false,
       showTranslation: false,
@@ -611,17 +613,10 @@ async function sendMessage() {
       text: '⚠️ 응답 처리 실패. 다시 시도해 주세요.',
       avatar: '/악어.png'
     })
+  } finally {
+    isSending.value = false
   }
 }
-
-
-function looksLikeFullKorean(text) {
-  if (!text) return false
-  const koreanMatch = text.match(/[가-힣]/g) || []
-  const ratio = koreanMatch.length / text.length
-  return ratio > 0.5
-}
-
 
 function closeTooltip(index) {
   messages.value[index].showTooltip = false
@@ -629,21 +624,6 @@ function closeTooltip(index) {
 
 function toggleTooltip(index) {
   messages.value[index].showTooltip = !messages.value[index].showTooltip
-}
-
-
-function toggleFavorite(index) {
-  messages.value[index].favorite = !messages.value[index].favorite
-}
-
-function toggleGrammarFavorite(index, grammarText) {
-  const fav = messages.value[index].grammarFavorites
-  fav[grammarText] = !fav[grammarText]
-}
-
-function toggleWordFavorite(index, word) {
-  const fav = messages.value[index].wordFavorites
-  fav[word] = !fav[word]
 }
 
 function toggleTranslation(index) {
@@ -771,6 +751,10 @@ function scrollToBottom() {
 .arrow-icon {
   width: 20px;
   height: 20px;
+}
+
+.send-button:disabled {
+  background-color: #cccccc;
 }
 
 .chat-messages {
