@@ -131,9 +131,15 @@
                 @keydown.enter.exact.prevent="sendMessage"
                 :disabled="isSending"
             />
-            <button class="send-button" @click="sendMessage" :disabled="isSending || !message.trim()">
-              <Icon icon="mdi:send" class="arrow-icon" color="white" width="24" height="24" />
-            </button>
+            <div class="chat-buttons">
+              <button class="translate-button" @click="showTranslate = true">
+                <Icon icon="mdi:translate" color="white" width="24" height="24" />
+              </button>
+              <TranslateDialog v-if="showTranslate" :onClose="() => showTranslate = false" />
+              <button class="send-button" @click="sendMessage" :disabled="isSending || !message.trim()">
+                <Icon icon="mdi:send" class="arrow-icon" color="white" width="24" height="24" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -163,6 +169,7 @@ import {
   toggleGrammarFavorites, toggleSentenceFavorites, fetchWordDetail
 } from "@/api/fav.js";
 import Loading from "@/components/Loading.vue";
+import TranslateDialog from "@/components/translate/TranslateDialog.vue";
 const loadingTooltips = ref({})
 const showSetting = ref(false)
 const message = ref('')
@@ -188,7 +195,7 @@ const showFavoriteSelectModal = ref(false)
 const languageMode = ref('')
 const showLanguageChoice = ref(false)
 const showLanguageDialog = ref(false)
-
+const showTranslate = ref(false)
 onMounted(async () => {
   await loadFavoriteWords()
   await loadFavoriteGrammar()
@@ -731,6 +738,7 @@ function scrollToBottom() {
   color: rgba(0, 0, 0, 0.5);
 }
 
+.translate-button,
 .send-button {
   width: 40px;
   height: 40px;
@@ -742,6 +750,17 @@ function scrollToBottom() {
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.chat-buttons {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.translate-button:hover {
+  opacity: 0.5;
 }
 
 ::v-deep(.highlight) {
