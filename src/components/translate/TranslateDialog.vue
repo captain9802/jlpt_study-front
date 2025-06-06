@@ -15,7 +15,7 @@
 
       <textarea class="output-textarea" v-model="inputText" placeholder="번역할 내용을 입력하세요..." />
 
-      <textarea class="output-textarea" :value="translatedText" readonly placeholder="번역 결과가 여기에 표시됩니다." />
+      <textarea class="output-textarea" :value="loadingText || translatedText" readonly placeholder="번역 결과가 여기에 표시됩니다." />
 
       <button class="translate-run-button" @click="runTranslation">
         번역하기
@@ -56,12 +56,25 @@ const translatedText = ref('')
 const words = ref([])
 const grammar = ref([])
 const direction = ref('ko-ja')
+const loadingText = ref('')
+let loadingInterval = null
 
 function close() {
   props.onClose()
 }
 
 async function runTranslation() {
+  translatedText.value = ''
+  words.value = []
+  grammar.value = []
+  loadingText.value = '번역중 .'
+  let dotCount = 1
+
+  loadingInterval = setInterval(() => {
+    dotCount = (dotCount % 3) + 1
+    loadingText.value = '번역중 ' + '. '.repeat(dotCount).trim()
+  }, 400)
+
   try {
     const result = await fetchTranslation({
       text: inputText.value,
@@ -73,10 +86,13 @@ async function runTranslation() {
     grammar.value = result.explanation?.grammar || []
   } catch (error) {
     translatedText.value = '번역 실패'
-    words.value = []
-    grammar.value = []
+  } finally {
+    clearInterval(loadingInterval)
+    loadingInterval = null
+    loadingText.value = ''
   }
 }
+
 </script>
 
 <style scoped>
@@ -96,6 +112,8 @@ async function runTranslation() {
 .translate-dialog {
   width: 90%;
   max-width: 500px;
+  overflow-y: auto;
+  max-height: 90dvh;
   background: white;
   border-radius: 1rem;
   padding: 1.5rem;
@@ -105,6 +123,20 @@ async function runTranslation() {
   gap: 1rem;
   margin: 1rem;
 }
+
+.translate-dialog::-webkit-scrollbar {
+  width: 6px;
+}
+
+.translate-dialog::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+}
+
+.translate-dialog::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 
 .translate-header {
   display: flex;
@@ -144,6 +176,8 @@ textarea {
   border: 1px solid #ccc;
   border-radius: 0.5rem;
   font-family: inherit;
+  min-height: 100px;
+  flex-shrink: 0;
 }
 
 .output-textarea {
