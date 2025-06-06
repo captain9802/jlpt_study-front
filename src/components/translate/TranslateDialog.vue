@@ -3,12 +3,14 @@
     <div class="translate-dialog">
       <div class="translate-header">
         <div class="translate-text">번역</div>
-        <button class="close-button" @click="close">✕</button>
+        <button class="close-button" @click="close">
+          <Icon icon="mdi:close" width="24" height="24" />
+        </button>
       </div>
 
       <div class="lang-toggle">
-        <button :class="{ active: direction === 'ko-ja' }" @click="direction = 'ko-ja'">한국어 → 일본어</button>
-        <button :class="{ active: direction === 'ja-ko' }" @click="direction = 'ja-ko'">일본어 → 한국어</button>
+        <button :class="{ active: direction === 'ko-ja' }" @click="direction = 'ko-ja'" style="font-weight: bold">한국어 → 일본어</button>
+        <button :class="{ active: direction === 'ja-ko' }" @click="direction = 'ja-ko'" style="font-weight: bold">일본어 → 한국어</button>
       </div>
 
       <textarea class="output-textarea" v-model="inputText" placeholder="번역할 내용을 입력하세요..." />
@@ -20,7 +22,7 @@
       </button>
 
       <div class="translate-section" v-if="words.length">
-        <h4>단어</h4>
+        <div class="translate-title">단어</div>
         <ul>
           <li v-for="(word, i) in words" :key="i">
             {{ word.text }} ({{ word.reading }}) - {{ word.meaning }}
@@ -29,7 +31,7 @@
       </div>
 
       <div class="translate-section" v-if="grammar.length">
-        <h4>문법</h4>
+        <div class="translate-title">문법</div>
         <ul>
           <li v-for="(g, i) in grammar" :key="i">
             {{ g.text }} - {{ g.meaning }}
@@ -43,6 +45,7 @@
 <script setup>
 import { ref } from 'vue'
 import {fetchTranslation} from "@/api/chat.js";
+import {Icon} from "@iconify/vue";
 
 const props = defineProps({
   onClose: Function
@@ -82,7 +85,7 @@ async function runTranslation() {
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   background: rgba(0, 0, 0, 0.4);
   display: flex;
   justify-content: center;
@@ -179,5 +182,12 @@ textarea {
   border: none;
   font-size: 1.2rem;
   cursor: pointer;
+  padding: 0;
+  color: #3e3e3e;
+}
+
+.translate-title {
+  font-size: 1.125rem;
+  font-weight: bold;
 }
 </style>
