@@ -10,3 +10,8 @@ export const getWordsByLevel = async (level, page = 1, perPage = 50) => {
     })
     return res.data
 }
+
+export const getTodayWord = async () => {
+    const res = await API.get('/today-word')
+    return res.data
+}

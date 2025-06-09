@@ -170,6 +170,7 @@ import {
 } from "@/api/fav.js";
 import Loading from "@/components/Loading.vue";
 import TranslateDialog from "@/components/translate/TranslateDialog.vue";
+import {getTodayWord} from "@/api/jlpt";
 const loadingTooltips = ref({})
 const showSetting = ref(false)
 const message = ref('')
@@ -350,6 +351,26 @@ onMounted(() => {
   }
 })
 
+onMounted(async () => {
+  if (sessionStorage.getItem('sent_today_word')) return
+  try {
+    const { word } = await getTodayWord()
+
+    handleAiMessage({
+      from: 'ai',
+      text: `오늘의 단어는 「${word.word}」(${word.kana})입니다!\n의미는: ${word.meaning_ko} 🌟`,
+      avatar: '/악어.png'
+    })
+    sessionStorage.setItem('sent_today_word', 'true')
+  } catch (err) {
+    console.error('오늘의 단어 로딩 실패:', err)
+    handleAiMessage({
+      from: 'ai',
+      text: '오늘의 단어를 불러오는 데 실패했어요 😢 다시 시도해 주세요.',
+      avatar: '/악어.png'
+    })
+  }
+})
 
 function handleAiMessage(message) {
   messages.value.push(message)
