@@ -413,11 +413,16 @@ const chooseLanguage = async (mode) => {
   }
 }
 
-
 onMounted(async () => {
-  res = await getMemories()
-  showSetting.value = true
-  if (res.data.Aisetting) {
+  const shouldReset = sessionStorage.getItem('resetAiset')
+  sessionStorage.removeItem('resetAiset')
+
+  const res = await getMemories()
+
+  if (shouldReset || !res.data.Aisetting) {
+    showSetting.value = true
+    resetKey.value++
+  } else {
     languageMode.value = res.data.hasLanguageMode
     showSetting.value = false
     handleSettingComplete()
@@ -426,7 +431,7 @@ onMounted(async () => {
   if (res?.data?.data?.length && !localStorage.getItem('ai-messages')) {
     handleAiMessage({
       from: 'ai',
-      text: `다시 왔구나! 와줘서 기뻐~ 👋 `,
+      text: '다시 왔구나! 와줘서 기뻐~ 👋',
       avatar: '/악어.png'
     })
   }
@@ -435,6 +440,7 @@ onMounted(async () => {
     showLanguageChoice.value = true
   }
 })
+
 
 onMounted(async () => {
   const wordRes = await getWordLists()

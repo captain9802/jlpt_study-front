@@ -8,6 +8,10 @@ export const updateLanguageMode = (mode) => {
     return API.put('/ai-settings/language-mode', { language_mode: mode })
 }
 
+export const resetAiSettings = () => {
+    return API.post('/ai-reset')
+}
+
 export const getMemories = () => API.get('/chat-memories')
 
 export const sendChat = ({ message, language = 'mix' }) =>

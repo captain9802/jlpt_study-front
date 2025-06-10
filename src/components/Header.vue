@@ -39,14 +39,32 @@
 <script setup>
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
+import {resetAiSettings} from "@/api/chat.js";
+import {toast} from "vue3-toastify";
 
 const showMenu = ref(false)
 const toggleMenu = () => {
   showMenu.value = !showMenu.value
 }
 
-const handleMenuClick = (item) => {
-  if (item.label === '챗 설정') {
+const handleMenuClick = async (item) => {
+  if (item.label === '챗 설정 초기화') {
+    try {
+      await resetAiSettings()
+      sessionStorage.removeItem('Aiset')
+      toast.success('챗 설정이 초기화되었습니다.')
+
+      showMenu.value = false
+      if (window.location.pathname === '/chat') {
+        window.location.reload()
+      } else {
+        window.location.href = '/chat'
+      }
+    } catch (error) {
+      toast.error('챗 설정 초기화에 실패했습니다.')
+      console.error(error)
+    }
+  } else if (item.label === '챗 설정') {
     sessionStorage.removeItem('Aiset')
     showMenu.value = false
     if (window.location.pathname === '/chat') {
@@ -66,7 +84,8 @@ const menuItems = [
   { to: '/sentence_favorites', label: '문장 즐겨찾기', icon: '📝' },
   { to: '/jlpt_list', label: 'N1 ~ N5 단어', icon: '🈶' },
   { to: '/study_hiragana', label: '히라가나 학습', icon: 'あ' },
-  { to: '/study_katakana', label: '가타카나 학습', icon: 'ア' }
+  { to: '/study_katakana', label: '가타카나 학습', icon: 'ア' },
+  { label: '챗 설정 초기화', icon: '🔄' }
 ]
 
 const user = {
