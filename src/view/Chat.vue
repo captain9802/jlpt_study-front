@@ -64,10 +64,10 @@
                     <Icon
                         icon="mdi:volume-high"
                         class="icon"
-                        color="#ccc"
+                        :color="isPlaying ? '#42a5f5' : '#ccc'"
                         width="24"
                         height="24"
-                        @click="speakText(msg.text)"
+                        @click="() => speakText(msg.text)"
                     />
                     <Icon
                         icon="mdi:translate"
@@ -176,7 +176,7 @@ const showSetting = ref(false)
 const message = ref('')
 
 const placeholder = '여기에 메세지를 입력해주세요.\n(ここにメッセージを入力してください.)'
-let res = null;
+const res = ref([]);
 const messages = ref([])
 const wordList = ref([])
 const userInput = ref('')
@@ -197,6 +197,9 @@ const languageMode = ref('')
 const showLanguageChoice = ref(false)
 const showLanguageDialog = ref(false)
 const showTranslate = ref(false)
+const isPlaying = ref(false)
+const currentAudio = ref(null)
+
 onMounted(async () => {
   await loadFavoriteWords()
   await loadFavoriteGrammar()
@@ -204,11 +207,29 @@ onMounted(async () => {
 })
 
 const speakText = async (msg) => {
+  if (isPlaying.value) return
+
   try {
+    isPlaying.value = true
     const blob = await fetchTTS(msg)
     const audio = new Audio(URL.createObjectURL(blob))
+    currentAudio.value = audio
+
+    audio.onended = () => {
+      isPlaying.value = false
+      currentAudio.value = null
+    }
+
+    audio.onerror = () => {
+      isPlaying.value = false
+      currentAudio.value = null
+      console.error('TTS 재생 실패')
+    }
+
     audio.play()
   } catch (e) {
+    isPlaying.value = false
+    currentAudio.value = null
     console.error('TTS 재생 실패:', e)
   }
 }
