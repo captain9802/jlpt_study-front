@@ -32,3 +32,12 @@ export const fetchTranslation = async ({ text, direction = 'ja-ko' }) => {
     })
     return res.data
 }
+
+export const fetchTTS = async (text) => {
+    const res = await API.post(
+        '/text-sound',
+        { text },
+        { responseType: 'blob' }
+    )
+    return res.data
+}

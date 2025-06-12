@@ -98,24 +98,21 @@ async function onComplete() {
 
 const optionData = {
   personality: [
+    '기본',
     '밝은',
-    '차분한',
-    '명랑한',
-    '진지한',
-    '장난기 있는'
+    '슬픈',
+    '단호한'
   ],
   tone: [
-    '친근한',
-    '공손한',
-    '차분한',
-    '애교 있는'
+    '보통 말투',
+    '빠른 말투',
+    '느린 말투',
+    '높은 톤',
+    '낮은 톤'
   ],
   voice: [
     '여성',
     '남성',
-    '중성',
-    '아이 목소리',
-    '로봇 스타일'
   ]
 }
 const currentOptions = reactive({

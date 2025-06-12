@@ -159,7 +159,7 @@ import {ref, nextTick, onMounted, watch, computed, toRaw} from 'vue'
 import Aiset from '@/components/ai/Aiset.vue'
 import { toast } from 'vue3-toastify'
 import AddFav from "@/components/fav/AddFav.vue"
-import {sendChat, getMemories, updateLanguageMode, fetchTooltipInfo } from '@/api/chat'
+import {sendChat, getMemories, updateLanguageMode, fetchTooltipInfo, fetchTTS} from '@/api/chat'
 import {
   getFavoriteWords,
   getGrammarLists,
@@ -203,12 +203,14 @@ onMounted(async () => {
   await loadFavoriteSentence()
 })
 
-const speakText = (msg) => {
-  const utterance = new SpeechSynthesisUtterance(msg)
-  utterance.lang = 'ja-JP'
-  utterance.rate = 1
-  utterance.pitch = 1
-  speechSynthesis.speak(utterance)
+const speakText = async (msg) => {
+  try {
+    const blob = await fetchTTS(msg)
+    const audio = new Audio(URL.createObjectURL(blob))
+    audio.play()
+  } catch (e) {
+    console.error('TTS 재생 실패:', e)
+  }
 }
 
 function isSentenceFavorite(sentenceObj) {
