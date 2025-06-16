@@ -11,8 +11,8 @@
       <div v-for="(word, i) in wordList" :key="i" class="word-item">
         <div class="word-header">
           <span class="word-text">{{ word.word }}({{ word.kana }})</span>
-          <button class="tts-btn" @click="speak(word.word)">
-            <Icon icon="mdi:volume-high" width="20" />
+          <button class="tts-btn" @click="() => speakText(word.word)">
+            <Icon icon="mdi:volume-high" width="20" height="20"  :color="isPlaying ? '#42a5f5' : '#ccc'" />
           </button>
         </div>
         <div class="word-info">뜻: {{ word.meaning_ko }}</div>
@@ -81,6 +81,7 @@ import { Icon } from '@iconify/vue'
 import { debounce } from 'lodash'
 import {getWordsByLevel} from "@/api/jlpt.js";
 import Loading from "@/components/Loading.vue";
+import {fetchTTS} from "@/api/chat.js";
 
 const route = useRoute()
 const router = useRouter()
@@ -93,6 +94,9 @@ const page = ref(1)
 const isLoadingMore = ref(false)
 const hasMore = ref(true)
 const scrollContainer = ref(null)
+
+const isPlaying = ref(false)
+const currentAudio = ref(null)
 
 const maxQuestionCount = computed(() => {
   return maxQuestionMap[level] || 100
@@ -160,10 +164,32 @@ const startQuiz = () => {
   })
 }
 
-const speak = (text) => {
-  const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = 'ja-JP'
-  speechSynthesis.speak(utterance)
+const speakText = async (text) => {
+  if (isPlaying.value) return
+
+  try {
+    isPlaying.value = true
+    const blob = await fetchTTS(text)
+    const audio = new Audio(URL.createObjectURL(blob))
+    currentAudio.value = audio
+
+    audio.onended = () => {
+      isPlaying.value = false
+      currentAudio.value = null
+    }
+
+    audio.onerror = () => {
+      isPlaying.value = false
+      currentAudio.value = null
+      console.error('TTS 재생 실패')
+    }
+
+    audio.play()
+  } catch (e) {
+    isPlaying.value = false
+    currentAudio.value = null
+    console.error('TTS 재생 실패:', e)
+  }
 }
 
 const quizSettings = ref({

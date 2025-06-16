@@ -50,8 +50,8 @@
       >
         <div class="word-header">
           <span class="word-text">{{ word.text }}（{{ word.reading || 'よみ' }}）</span>
-          <button class="tts-btn" @click="speak(word.text)">
-            <Icon icon="mdi:volume-high" width="20" />
+          <button class="tts-btn" @click="() => speakText(word.text)">
+            <Icon icon="mdi:volume-high" width="20" height="20"  :color="isPlaying ? '#42a5f5' : '#ccc'" />
           </button>
           <button class="fav-btn">
             <Icon
@@ -105,12 +105,15 @@ import {
 } from "@/api/fav.js";
 import router from "@/router/index.js";
 import {toast} from "vue3-toastify";
+import {fetchTTS} from "@/api/chat.js";
 
 const route = useRoute()
 const listId = route.params.id
 const folderName = route.params.name || '단어장'
 const wordList = ref([])
 const favoriteWords = ref([])
+const isPlaying = ref(false)
+const currentAudio = ref(null)
 
 onMounted(async () => {
   const fetchedWords = await getWordsByList(listId)
@@ -220,10 +223,32 @@ const toggleDetail = (index) => {
   wordList.value[index].showDetail = !wordList.value[index].showDetail
 }
 
-const speak = (text) => {
-  const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = 'ja-JP'
-  speechSynthesis.speak(utterance)
+const speakText = async (text) => {
+  if (isPlaying.value) return
+
+  try {
+    isPlaying.value = true
+    const blob = await fetchTTS(text)
+    const audio = new Audio(URL.createObjectURL(blob))
+    currentAudio.value = audio
+
+    audio.onended = () => {
+      isPlaying.value = false
+      currentAudio.value = null
+    }
+
+    audio.onerror = () => {
+      isPlaying.value = false
+      currentAudio.value = null
+      console.error('TTS 재생 실패')
+    }
+
+    audio.play()
+  } catch (e) {
+    isPlaying.value = false
+    currentAudio.value = null
+    console.error('TTS 재생 실패:', e)
+  }
 }
 
 const toggleFavorite = (i) => {

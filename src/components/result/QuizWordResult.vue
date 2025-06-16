@@ -25,8 +25,8 @@
             <div v-for="(word, i) in wrongAnswers" :key="i" class="word-item">
               <div class="word-header">
                 <span class="word-text">{{ word.ja }} / {{(word.kana)}}</span>
-                <button class="tts-btn" @click="speak(word.kana)">
-                  <Icon icon="mdi:volume-high" width="20" />
+                <button class="tts-btn" @click="() => speakText(word.kana)">
+                  <Icon icon="mdi:volume-high" width="20" height="20"  :color="isPlaying ? '#42a5f5' : '#ccc'" />
                 </button>
               </div>
               <div class="word-info">뜻: {{ word.ko }}</div>
@@ -45,8 +45,8 @@
             <div v-for="(word, i) in correctAnswers" :key="i" class="word-item">
               <div class="word-header">
                 <span class="word-text">{{ word.ja }} / {{(word.kana)}}</span>
-                <button class="tts-btn" @click="speak(word.kana)">
-                  <Icon icon="mdi:volume-high" width="20" />
+                <button class="tts-btn" @click="() => speakText(word.kana)">
+                  <Icon icon="mdi:volume-high" width="20" height="20"  :color="isPlaying ? '#42a5f5' : '#ccc'" />
                 </button>
               </div>
               <div class="word-info">뜻: {{ word.ko }}</div>
@@ -70,10 +70,14 @@ import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import router from '@/router'
 import {getFavoriteChoicePool, getJlptChoicePool, getWordQuizLimited, getWordsByList} from "@/api/fav.js";
+import {fetchTTS} from "@/api/chat.js";
 
 const correctAnswers = ref([])
 const wrongAnswers = ref([])
 const quizCount = Number(sessionStorage.getItem('quizCount') || 0)
+
+const isPlaying = ref(false)
+const currentAudio = ref(null)
 
 onMounted(() => {
   const quizData = JSON.parse(sessionStorage.getItem('quizData') || '[]')
@@ -101,10 +105,32 @@ onMounted(() => {
   })
 })
 
-const speak = (text) => {
-  const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = 'ja-JP'
-  speechSynthesis.speak(utterance)
+const speakText = async (text) => {
+  if (isPlaying.value) return
+
+  try {
+    isPlaying.value = true
+    const blob = await fetchTTS(text)
+    const audio = new Audio(URL.createObjectURL(blob))
+    currentAudio.value = audio
+
+    audio.onended = () => {
+      isPlaying.value = false
+      currentAudio.value = null
+    }
+
+    audio.onerror = () => {
+      isPlaying.value = false
+      currentAudio.value = null
+      console.error('TTS 재생 실패')
+    }
+
+    audio.play()
+  } catch (e) {
+    isPlaying.value = false
+    currentAudio.value = null
+    console.error('TTS 재생 실패:', e)
+  }
 }
 
 const retryWrong = async () => {

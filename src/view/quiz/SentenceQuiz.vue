@@ -13,8 +13,8 @@
         <p v-if="isAnswered" class="explanation">
           {{ currentQuestion.explanation }}
         </p>
-        <button class="tts-btn" @click="speak(currentQuestion.jp)">
-          <Icon icon="mdi:volume-high" width="20" height="20" />
+        <button class="tts-btn" @click="() => speakText(currentQuestion.jp)">
+          <Icon icon="mdi:volume-high" width="20" height="20"  :color="isPlaying ? '#42a5f5' : '#ccc'" />
         </button>
       </div>
 
@@ -67,6 +67,7 @@ import { Icon } from '@iconify/vue'
 import router from '@/router'
 import { useRoute } from 'vue-router'
 import { getSentenceQuiz } from '@/api/fav.js'
+import {fetchTTS} from "@/api/chat.js";
 const currentIndex = ref(0)
 const answers = ref([])
 const quizData = ref([])
@@ -74,6 +75,9 @@ const route = useRoute()
 
 const listId = route.query.listId
 const order = route.query.order || 'default'
+
+const isPlaying = ref(false)
+const currentAudio = ref(null)
 
 watch(currentIndex, (val) => {
   sessionStorage.setItem('currentIndex', val)
@@ -170,10 +174,32 @@ const goToPrev = () => {
   }
 }
 
-const speak = (text) => {
-  const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = 'ja-JP'
-  speechSynthesis.speak(utterance)
+const speakText = async (text) => {
+  if (isPlaying.value) return
+
+  try {
+    isPlaying.value = true
+    const blob = await fetchTTS(text)
+    const audio = new Audio(URL.createObjectURL(blob))
+    currentAudio.value = audio
+
+    audio.onended = () => {
+      isPlaying.value = false
+      currentAudio.value = null
+    }
+
+    audio.onerror = () => {
+      isPlaying.value = false
+      currentAudio.value = null
+      console.error('TTS 재생 실패')
+    }
+
+    audio.play()
+  } catch (e) {
+    isPlaying.value = false
+    currentAudio.value = null
+    console.error('TTS 재생 실패:', e)
+  }
 }
 
 const submitQuiz = () => {
